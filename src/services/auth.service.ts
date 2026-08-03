@@ -1,7 +1,14 @@
 import { Provider } from "@generated/prisma/client";
 import { AppError } from "@/errors";
 import { prisma } from "@/prisma";
-import { hashPassword, signAuthToken, verifyPassword } from "@/utils";
+import {
+  generateRefreshToken,
+  hashPassword,
+  hashRefreshToken,
+  refreshTokenExpiresAt,
+  signAccessToken,
+  verifyPassword,
+} from "@/utils";
 import type { LoginBody, RegisterBody } from "@/validators";
 
 export type AuthUser = {
@@ -11,10 +18,14 @@ export type AuthUser = {
   image: string | null;
 };
 
+export type TokenPair = {
+  accessToken: string;
+  refreshToken: string;
+};
+
 export type AuthResult = {
   user: AuthUser;
-  token: string;
-};
+} & TokenPair;
 
 const userSelect = {
   id: true,
@@ -23,11 +34,24 @@ const userSelect = {
   image: true,
 } as const;
 
-function toAuthResult(user: AuthUser): AuthResult {
-  return {
-    user,
-    token: signAuthToken({ sub: user.id, email: user.email }),
-  };
+async function issueTokenPair(user: AuthUser): Promise<TokenPair> {
+  const accessToken = signAccessToken({ sub: user.id, email: user.email });
+  const refreshToken = generateRefreshToken();
+
+  await prisma.refreshToken.create({
+    data: {
+      token_hash: hashRefreshToken(refreshToken),
+      user_id: user.id,
+      expires_at: refreshTokenExpiresAt(),
+    },
+  });
+
+  return { accessToken, refreshToken };
+}
+
+async function toAuthResult(user: AuthUser): Promise<AuthResult> {
+  const tokens = await issueTokenPair(user);
+  return { user, ...tokens };
 }
 
 /**
@@ -119,5 +143,78 @@ export async function login(input: LoginBody): Promise<AuthResult> {
     name: user.name,
     email: user.email,
     image: user.image,
+  });
+}
+
+/**
+ * Rotates the refresh token and issues a new access token.
+ * Reuse of a revoked token revokes all sessions for that user.
+ */
+export async function refresh(rawRefreshToken: string): Promise<TokenPair> {
+  const tokenHash = hashRefreshToken(rawRefreshToken);
+
+  const stored = await prisma.refreshToken.findUnique({
+    where: { token_hash: tokenHash },
+    select: {
+      id: true,
+      user_id: true,
+      expires_at: true,
+      revoked_at: true,
+      user: { select: userSelect },
+    },
+  });
+
+  if (!stored) {
+    throw new AppError("Invalid refresh token", 401);
+  }
+
+  if (stored.revoked_at) {
+    await prisma.refreshToken.updateMany({
+      where: { user_id: stored.user_id, revoked_at: null },
+      data: { revoked_at: new Date() },
+    });
+    throw new AppError("Refresh token reuse detected. Please sign in again.", 401);
+  }
+
+  if (stored.expires_at.getTime() <= Date.now()) {
+    await prisma.refreshToken.update({
+      where: { id: stored.id },
+      data: { revoked_at: new Date() },
+    });
+    throw new AppError("Refresh token expired", 401);
+  }
+
+  const newRefreshToken = generateRefreshToken();
+  const accessToken = signAccessToken({
+    sub: stored.user.id,
+    email: stored.user.email,
+  });
+
+  await prisma.$transaction([
+    prisma.refreshToken.update({
+      where: { id: stored.id },
+      data: { revoked_at: new Date() },
+    }),
+    prisma.refreshToken.create({
+      data: {
+        token_hash: hashRefreshToken(newRefreshToken),
+        user_id: stored.user_id,
+        expires_at: refreshTokenExpiresAt(),
+      },
+    }),
+  ]);
+
+  return { accessToken, refreshToken: newRefreshToken };
+}
+
+/**
+ * Revokes a refresh token (logout from this session).
+ */
+export async function logout(rawRefreshToken: string): Promise<void> {
+  const tokenHash = hashRefreshToken(rawRefreshToken);
+
+  await prisma.refreshToken.updateMany({
+    where: { token_hash: tokenHash, revoked_at: null },
+    data: { revoked_at: new Date() },
   });
 }

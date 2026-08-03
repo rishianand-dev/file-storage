@@ -13,15 +13,28 @@ datasource db {
 }
 
 model User {
-  id              String   @id @default(uuid())
-  name            String   @default("")
-  email           String   @unique
+  id              String         @id @default(uuid())
+  name            String         @default("")
+  email           String         @unique
   hashed_password String? // null for OAuth-only users
   image           String?
   accounts        Account[]
-  created_at      DateTime @default(now())
-  updated_at      DateTime @updatedAt
+  refresh_tokens  RefreshToken[]
+  created_at      DateTime       @default(now())
+  updated_at      DateTime       @updatedAt
+}
 
+model RefreshToken {
+  id         String    @id @default(uuid())
+  token_hash String    @unique
+  user_id    String
+  user       User      @relation(fields: [user_id], references: [id], onDelete: Cascade)
+  expires_at DateTime
+  revoked_at DateTime?
+  created_at DateTime  @default(now())
+  updated_at DateTime  @updatedAt
+
+  @@index([user_id])
 }
 enum Provider {
   CREDENTIALS
