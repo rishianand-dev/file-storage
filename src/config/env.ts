@@ -15,4 +15,6 @@ export const env = {
   jwtSecret: required("JWT_SECRET"),
   jwtExpiresIn: process.env.JWT_EXPIRES_IN ?? "15m",
   jwtRefreshExpiresIn: process.env.JWT_REFRESH_EXPIRES_IN ?? "7d",
+  passwordResetExpiresIn: process.env.PASSWORD_RESET_EXPIRES_IN ?? "1h",
+  frontendUrl: process.env.FRONTEND_URL ?? "http://localhost:5173",
 } as const;

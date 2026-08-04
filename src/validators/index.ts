@@ -2,9 +2,13 @@ export {
   registerBodySchema,
   loginBodySchema,
   refreshBodySchema,
+  forgotPasswordBodySchema,
+  resetPasswordBodySchema,
   type RegisterBody,
   type LoginBody,
   type RefreshBody,
+  type ForgotPasswordBody,
+  type ResetPasswordBody,
 } from "./auth.validator";
 export {
   updateMeBodySchema,

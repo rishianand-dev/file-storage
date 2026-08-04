@@ -3,6 +3,8 @@ export {
   login,
   refresh,
   logout,
+  forgotPassword,
+  resetPassword,
   type AuthUser,
   type AuthResult,
   type TokenPair,

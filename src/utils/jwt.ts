@@ -7,7 +7,6 @@ export type AccessTokenPayload = {
   email: string;
 };
 
-/** @deprecated Use AccessTokenPayload */
 export type AuthTokenPayload = AccessTokenPayload;
 
 export function signAccessToken(payload: AccessTokenPayload): string {
@@ -16,7 +15,6 @@ export function signAccessToken(payload: AccessTokenPayload): string {
   } as jwt.SignOptions);
 }
 
-/** @deprecated Use signAccessToken */
 export const signAuthToken = signAccessToken;
 
 export function verifyAccessToken(token: string): AccessTokenPayload {
@@ -32,7 +30,6 @@ export function verifyAccessToken(token: string): AccessTokenPayload {
   };
 }
 
-/** @deprecated Use verifyAccessToken */
 export const verifyAuthToken = verifyAccessToken;
 
 export function generateRefreshToken(): string {
@@ -43,9 +40,6 @@ export function hashRefreshToken(token: string): string {
   return createHash("sha256").update(token).digest("hex");
 }
 
-/**
- * Parses durations like `15m`, `7d` into a future Date.
- */
 export function refreshTokenExpiresAt(): Date {
   const match = /^(\d+)([smhd])$/.exec(env.jwtRefreshExpiresIn);
   if (!match) {

@@ -10,3 +10,9 @@ export {
   type AccessTokenPayload,
   type AuthTokenPayload,
 } from "./jwt";
+export {
+  generatePasswordResetToken,
+  hashPasswordResetToken,
+  passwordResetExpiresAt,
+} from "./password-reset";
+export { sendPasswordResetEmail } from "./mail";

@@ -220,6 +220,84 @@ export const openApiSpec: OpenAPIV3.Document = {
         },
       },
     },
+    "/auth/forgot-password": {
+      post: {
+        tags: ["Auth"],
+        summary: "Forgot password",
+        description:
+          "Sends a password reset link if a credentials account exists for the email. Always returns the same message to avoid email enumeration. In development the reset link is logged to the server console.",
+        requestBody: {
+          required: true,
+          content: {
+            "application/json": {
+              schema: { $ref: "#/components/schemas/ForgotPasswordBody" },
+              example: { email: "rishi@example.com" },
+            },
+          },
+        },
+        responses: {
+          "200": {
+            description: "Generic success response",
+            content: {
+              "application/json": {
+                schema: { $ref: "#/components/schemas/ForgotPasswordSuccessResponse" },
+              },
+            },
+          },
+          "400": {
+            description: "Validation failed",
+            content: {
+              "application/json": {
+                schema: { $ref: "#/components/schemas/ValidationErrorResponse" },
+              },
+            },
+          },
+        },
+      },
+    },
+    "/auth/reset-password": {
+      post: {
+        tags: ["Auth"],
+        summary: "Reset password",
+        description:
+          "Sets a new password using a valid reset token from the forgot-password email. Revokes all active refresh sessions for the user.",
+        requestBody: {
+          required: true,
+          content: {
+            "application/json": {
+              schema: { $ref: "#/components/schemas/ResetPasswordBody" },
+              example: {
+                token: "paste-token-from-email-or-console",
+                password: "newsecret1",
+              },
+            },
+          },
+        },
+        responses: {
+          "200": {
+            description: "Password reset successful",
+            content: {
+              "application/json": {
+                schema: { $ref: "#/components/schemas/ResetPasswordSuccessResponse" },
+              },
+            },
+          },
+          "400": {
+            description: "Validation failed or invalid/expired reset token",
+            content: {
+              "application/json": {
+                schema: {
+                  oneOf: [
+                    { $ref: "#/components/schemas/ValidationErrorResponse" },
+                    { $ref: "#/components/schemas/ErrorResponse" },
+                  ],
+                },
+              },
+            },
+          },
+        },
+      },
+    },
     "/me": {
       get: {
         tags: ["Me"],
@@ -353,6 +431,66 @@ export const openApiSpec: OpenAPIV3.Document = {
           refreshToken: {
             type: "string",
             description: "Refresh token from login/register/refresh",
+          },
+        },
+      },
+      ForgotPasswordBody: {
+        type: "object",
+        required: ["email"],
+        properties: {
+          email: {
+            type: "string",
+            format: "email",
+            example: "rishi@example.com",
+          },
+        },
+      },
+      ResetPasswordBody: {
+        type: "object",
+        required: ["token", "password"],
+        properties: {
+          token: {
+            type: "string",
+            description: "Password reset token from email / console",
+            example: "paste-token-from-email-or-console",
+          },
+          password: {
+            type: "string",
+            format: "password",
+            minLength: 8,
+            maxLength: 72,
+            example: "newsecret1",
+          },
+        },
+      },
+      ForgotPasswordSuccessResponse: {
+        type: "object",
+        properties: {
+          status: { type: "string", example: "success" },
+          data: {
+            type: "object",
+            properties: {
+              message: {
+                type: "string",
+                example:
+                  "If an account with that email exists, a password reset link has been sent.",
+              },
+            },
+          },
+        },
+      },
+      ResetPasswordSuccessResponse: {
+        type: "object",
+        properties: {
+          status: { type: "string", example: "success" },
+          data: {
+            type: "object",
+            properties: {
+              message: {
+                type: "string",
+                example: "Password has been reset. You can sign in now.",
+              },
+            },
           },
         },
       },
