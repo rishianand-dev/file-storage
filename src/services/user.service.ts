@@ -1,21 +1,11 @@
 import { Prisma } from "@generated/prisma/client";
 import { AppError } from "@/errors";
-import { prisma } from "@/prisma";
+import { userRepository } from "@/repositories";
 import type { AuthUser } from "@/services/auth.service";
 import type { UpdateMeBody } from "@/validators";
 
-const userSelect = {
-  id: true,
-  name: true,
-  email: true,
-  image: true,
-} as const;
-
 export async function getMe(userId: string): Promise<AuthUser> {
-  const user = await prisma.user.findUnique({
-    where: { id: userId },
-    select: userSelect,
-  });
+  const user = await userRepository.findById(userId);
 
   if (!user) {
     throw new AppError("User not found", 404);
@@ -30,10 +20,7 @@ export async function updateMe(
 ): Promise<AuthUser> {
   if (input.email !== undefined) {
     const email = input.email.toLowerCase();
-    const existing = await prisma.user.findUnique({
-      where: { email },
-      select: { id: true },
-    });
+    const existing = await userRepository.findIdByEmail(email);
     if (existing && existing.id !== userId) {
       throw new AppError("Email is already in use", 409);
     }
@@ -50,11 +37,7 @@ export async function updateMe(
   if (input.image !== undefined) data.image = input.image;
 
   try {
-    return await prisma.user.update({
-      where: { id: userId },
-      data,
-      select: userSelect,
-    });
+    return await userRepository.updateProfile(userId, data);
   } catch (error) {
     if (
       error instanceof Prisma.PrismaClientKnownRequestError &&

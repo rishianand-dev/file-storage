@@ -10,7 +10,4 @@ export {
   type ForgotPasswordBody,
   type ResetPasswordBody,
 } from "./auth.validator";
-export {
-  updateMeBodySchema,
-  type UpdateMeBody,
-} from "./me.validator";
+export { updateMeBodySchema, type UpdateMeBody } from "./me.validator";

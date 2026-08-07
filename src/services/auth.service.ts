@@ -1,6 +1,10 @@
 import { Provider } from "@generated/prisma/client";
 import { AppError } from "@/errors";
-import { prisma } from "@/prisma";
+import {
+  passwordResetRepository,
+  refreshTokenRepository,
+  userRepository,
+} from "@/repositories";
 import {
   generatePasswordResetToken,
   generateRefreshToken,
@@ -36,23 +40,14 @@ export type AuthResult = {
   user: AuthUser;
 } & TokenPair;
 
-const userSelect = {
-  id: true,
-  name: true,
-  email: true,
-  image: true,
-} as const;
-
 async function issueTokenPair(user: AuthUser): Promise<TokenPair> {
   const accessToken = signAccessToken({ sub: user.id, email: user.email });
   const refreshToken = generateRefreshToken();
 
-  await prisma.refreshToken.create({
-    data: {
-      token_hash: hashRefreshToken(refreshToken),
-      user_id: user.id,
-      expires_at: refreshTokenExpiresAt(),
-    },
+  await refreshTokenRepository.create({
+    token_hash: hashRefreshToken(refreshToken),
+    user_id: user.id,
+    expires_at: refreshTokenExpiresAt(),
   });
 
   return { accessToken, refreshToken };
@@ -70,13 +65,10 @@ async function toAuthResult(user: AuthUser): Promise<AuthResult> {
 export async function register(input: RegisterBody): Promise<AuthResult> {
   const email = input.email.toLowerCase();
 
-  const existing = await prisma.user.findUnique({
-    where: { email },
-    select: {
-      id: true,
-      hashed_password: true,
-      accounts: { select: { provider_name: true } },
-    },
+  const existing = await userRepository.findByEmail(email, {
+    id: true,
+    hashed_password: true,
+    accounts: { select: { provider_name: true } },
   });
 
   if (existing) {
@@ -92,19 +84,10 @@ export async function register(input: RegisterBody): Promise<AuthResult> {
 
   const hashed_password = await hashPassword(input.password);
 
-  const user = await prisma.user.create({
-    data: {
-      name: input.name,
-      email,
-      hashed_password,
-      accounts: {
-        create: {
-          provider_name: Provider.CREDENTIALS,
-          provider_id: email,
-        },
-      },
-    },
-    select: userSelect,
+  const user = await userRepository.createWithCredentials({
+    name: input.name,
+    email,
+    hashed_password,
   });
 
   return toAuthResult(user);
@@ -116,13 +99,10 @@ export async function register(input: RegisterBody): Promise<AuthResult> {
 export async function login(input: LoginBody): Promise<AuthResult> {
   const email = input.email.toLowerCase();
 
-  const user = await prisma.user.findUnique({
-    where: { email },
-    select: {
-      ...userSelect,
-      hashed_password: true,
-      accounts: { select: { provider_name: true } },
-    },
+  const user = await userRepository.findByEmail(email, {
+    ...userRepository.authUserSelect,
+    hashed_password: true,
+    accounts: { select: { provider_name: true } },
   });
 
   if (!user) {
@@ -162,16 +142,7 @@ export async function login(input: LoginBody): Promise<AuthResult> {
 export async function refresh(rawRefreshToken: string): Promise<TokenPair> {
   const tokenHash = hashRefreshToken(rawRefreshToken);
 
-  const stored = await prisma.refreshToken.findUnique({
-    where: { token_hash: tokenHash },
-    select: {
-      id: true,
-      user_id: true,
-      expires_at: true,
-      revoked_at: true,
-      user: { select: userSelect },
-    },
-  });
+  const stored = await refreshTokenRepository.findByTokenHash(tokenHash);
 
   if (!stored) {
     throw new AppError("Invalid refresh token", 401);
@@ -179,18 +150,12 @@ export async function refresh(rawRefreshToken: string): Promise<TokenPair> {
 
   if (stored.revoked_at) {
     // revoke all other tokens for the user
-    await prisma.refreshToken.updateMany({
-      where: { user_id: stored.user_id, revoked_at: null },
-      data: { revoked_at: new Date() },
-    });
+    await refreshTokenRepository.revokeAllForUser(stored.user_id);
     throw new AppError("Refresh token reuse detected. Please sign in again.", 401);
   }
 
   if (stored.expires_at.getTime() <= Date.now()) {
-    await prisma.refreshToken.update({
-      where: { id: stored.id },
-      data: { revoked_at: new Date() },
-    });
+    await refreshTokenRepository.revokeById(stored.id);
     throw new AppError("Refresh token expired", 401);
   }
 
@@ -200,23 +165,16 @@ export async function refresh(rawRefreshToken: string): Promise<TokenPair> {
     email: stored.user.email,
   });
 
-  await prisma.$transaction([
-    prisma.refreshToken.update({
-      where: { id: stored.id },
-      data: { revoked_at: new Date() },
-    }),
-    prisma.refreshToken.create({
-      data: {
-        token_hash: hashRefreshToken(newRefreshToken),
-        user_id: stored.user_id,
-        expires_at: refreshTokenExpiresAt(),
-      },
-    }),
-  ]);
+  await refreshTokenRepository.rotate({
+    oldTokenId: stored.id,
+    user_id: stored.user_id,
+    new_token_hash: hashRefreshToken(newRefreshToken),
+    expires_at: refreshTokenExpiresAt(),
+  });
 
   return { accessToken, refreshToken: newRefreshToken };
 }
-// WHY $transaction?
+// WHY rotate uses $transaction?
 // Without a transaction:
 
 // update old (success)
@@ -230,18 +188,12 @@ export async function refresh(rawRefreshToken: string): Promise<TokenPair> {
 // Anything fails → both roll back → DB stays as before
 // All-or-nothing.
 
-
-
 /**
  * Revokes a refresh token (logout from this session).
  */
 export async function logout(rawRefreshToken: string): Promise<void> {
   const tokenHash = hashRefreshToken(rawRefreshToken);
-
-  await prisma.refreshToken.updateMany({
-    where: { token_hash: tokenHash, revoked_at: null },
-    data: { revoked_at: new Date() },
-  });
+  await refreshTokenRepository.revokeByTokenHash(tokenHash);
 }
 
 const FORGOT_PASSWORD_MESSAGE =
@@ -257,27 +209,20 @@ export async function forgotPassword(
 ): Promise<{ message: string }> {
   const email = input.email.toLowerCase();
 
-  const user = await prisma.user.findUnique({
-    where: { email },
-    select: { id: true, hashed_password: true },
+  const user = await userRepository.findByEmail(email, {
+    id: true,
+    hashed_password: true,
   });
 
   // Only credentials users can reset a password
   if (user?.hashed_password) {
     const rawToken = generatePasswordResetToken();
 
-    await prisma.$transaction([
-      prisma.passwordResetToken.deleteMany({
-        where: { user_id: user.id },
-      }),
-      prisma.passwordResetToken.create({
-        data: {
-          token_hash: hashPasswordResetToken(rawToken),
-          user_id: user.id,
-          expires_at: passwordResetExpiresAt(),
-        },
-      }),
-    ]);
+    await passwordResetRepository.replaceForUser({
+      user_id: user.id,
+      token_hash: hashPasswordResetToken(rawToken),
+      expires_at: passwordResetExpiresAt(),
+    });
 
     await sendPasswordResetEmail(email, rawToken);
   }
@@ -292,14 +237,7 @@ export async function forgotPassword(
 export async function resetPassword(input: ResetPasswordBody): Promise<void> {
   const tokenHash = hashPasswordResetToken(input.token);
 
-  const stored = await prisma.passwordResetToken.findUnique({
-    where: { token_hash: tokenHash },
-    select: {
-      id: true,
-      user_id: true,
-      expires_at: true,
-    },
-  });
+  const stored = await passwordResetRepository.findByTokenHash(tokenHash);
 
   if (!stored || stored.expires_at.getTime() <= Date.now()) {
     throw new AppError("Invalid or expired reset token", 400);
@@ -307,17 +245,9 @@ export async function resetPassword(input: ResetPasswordBody): Promise<void> {
 
   const hashed_password = await hashPassword(input.password);
 
-  await prisma.$transaction([
-    prisma.user.update({
-      where: { id: stored.user_id },
-      data: { hashed_password },
-    }),
-    prisma.refreshToken.updateMany({
-      where: { user_id: stored.user_id, revoked_at: null },
-      data: { revoked_at: new Date() },
-    }),
-    prisma.passwordResetToken.delete({
-      where: { id: stored.id },
-    }),
-  ]);
+  await passwordResetRepository.consumeAndResetPassword({
+    user_id: stored.user_id,
+    reset_token_id: stored.id,
+    hashed_password,
+  });
 }

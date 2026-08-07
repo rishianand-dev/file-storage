@@ -83,7 +83,9 @@ export const openApiSpec: OpenAPIV3.Document = {
             description: "Validation failed",
             content: {
               "application/json": {
-                schema: { $ref: "#/components/schemas/ValidationErrorResponse" },
+                schema: {
+                  $ref: "#/components/schemas/ValidationErrorResponse",
+                },
               },
             },
           },
@@ -124,7 +126,9 @@ export const openApiSpec: OpenAPIV3.Document = {
             description: "Validation failed",
             content: {
               "application/json": {
-                schema: { $ref: "#/components/schemas/ValidationErrorResponse" },
+                schema: {
+                  $ref: "#/components/schemas/ValidationErrorResponse",
+                },
               },
             },
           },
@@ -158,7 +162,9 @@ export const openApiSpec: OpenAPIV3.Document = {
             description: "New token pair issued",
             content: {
               "application/json": {
-                schema: { $ref: "#/components/schemas/TokenPairSuccessResponse" },
+                schema: {
+                  $ref: "#/components/schemas/TokenPairSuccessResponse",
+                },
               },
             },
           },
@@ -166,7 +172,9 @@ export const openApiSpec: OpenAPIV3.Document = {
             description: "Validation failed",
             content: {
               "application/json": {
-                schema: { $ref: "#/components/schemas/ValidationErrorResponse" },
+                schema: {
+                  $ref: "#/components/schemas/ValidationErrorResponse",
+                },
               },
             },
           },
@@ -213,7 +221,9 @@ export const openApiSpec: OpenAPIV3.Document = {
             description: "Validation failed",
             content: {
               "application/json": {
-                schema: { $ref: "#/components/schemas/ValidationErrorResponse" },
+                schema: {
+                  $ref: "#/components/schemas/ValidationErrorResponse",
+                },
               },
             },
           },
@@ -240,7 +250,9 @@ export const openApiSpec: OpenAPIV3.Document = {
             description: "Generic success response",
             content: {
               "application/json": {
-                schema: { $ref: "#/components/schemas/ForgotPasswordSuccessResponse" },
+                schema: {
+                  $ref: "#/components/schemas/ForgotPasswordSuccessResponse",
+                },
               },
             },
           },
@@ -248,7 +260,9 @@ export const openApiSpec: OpenAPIV3.Document = {
             description: "Validation failed",
             content: {
               "application/json": {
-                schema: { $ref: "#/components/schemas/ValidationErrorResponse" },
+                schema: {
+                  $ref: "#/components/schemas/ValidationErrorResponse",
+                },
               },
             },
           },
@@ -278,7 +292,9 @@ export const openApiSpec: OpenAPIV3.Document = {
             description: "Password reset successful",
             content: {
               "application/json": {
-                schema: { $ref: "#/components/schemas/ResetPasswordSuccessResponse" },
+                schema: {
+                  $ref: "#/components/schemas/ResetPasswordSuccessResponse",
+                },
               },
             },
           },
@@ -358,7 +374,9 @@ export const openApiSpec: OpenAPIV3.Document = {
             description: "Validation failed",
             content: {
               "application/json": {
-                schema: { $ref: "#/components/schemas/ValidationErrorResponse" },
+                schema: {
+                  $ref: "#/components/schemas/ValidationErrorResponse",
+                },
               },
             },
           },
