@@ -10,5 +10,5 @@ export {
   type TokenPair,
 } from "./auth.service";
 export { getMe, updateMe } from "./user.service";
-export { createFolder } from "./folder.service";
+export { createFolder, renameFolder, softDeleteFolder, permanentDeleteFolder } from "./folder.service";
 export { uploadFile } from "./file.service";
