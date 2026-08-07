@@ -1,0 +1,54 @@
+model Folder {
+  id   String @id @default(uuid())
+  name String
+
+  // Folder Hierarchy
+  parent_id String?
+  parent    Folder?  @relation("FolderHierarchy", fields: [parent_id], references: [id], onDelete: Cascade)
+  children  Folder[] @relation("FolderHierarchy")
+
+  owner_id String
+  owner    User   @relation(fields: [owner_id], references: [id], onDelete: Cascade)
+
+  // Soft Delete
+  deleted_at DateTime?
+
+  created_at DateTime @default(now())
+  updated_at DateTime @updatedAt
+
+  files File[]
+
+  @@index([owner_id])
+  @@index([parent_id])
+  @@index([deleted_at])
+  @@unique([owner_id, parent_id, name])
+}
+
+model File {
+  id        String @id @default(uuid())
+  name      String
+  extension String
+  mime_type String
+
+  // Storage
+  storage_name String @unique
+  storage_path String
+  size         BigInt
+
+  folder_id String?
+  folder    Folder? @relation(fields: [folder_id], references: [id], onDelete: SetNull)
+
+  owner_id String
+  owner    User   @relation(fields: [owner_id], references: [id], onDelete: Cascade)
+
+  // Soft Delete
+  deleted_at DateTime?
+
+  created_at DateTime @default(now())
+  updated_at DateTime @updatedAt
+
+  @@index([owner_id])
+  @@index([folder_id])
+  @@index([deleted_at])
+  @@unique([owner_id, folder_id, name])
+}
