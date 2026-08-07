@@ -11,3 +11,7 @@ export {
   type ResetPasswordBody,
 } from "./auth.validator";
 export { updateMeBodySchema, type UpdateMeBody } from "./me.validator";
+export {
+  createFolderBodySchema,
+  type CreateFolderBody,
+} from "./folder.validator";
