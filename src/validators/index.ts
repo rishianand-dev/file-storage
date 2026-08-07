@@ -16,6 +16,6 @@ export {
   type CreateFolderBody,
 } from "./folder.validator";
 export {
-  createFileBodySchema,
-  type CreateFileBody,
+  uploadFileBodySchema,
+  type UploadFileBody,
 } from "./file.validator";

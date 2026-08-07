@@ -3,7 +3,7 @@ import path from "node:path";
 import { Prisma } from "@generated/prisma/client";
 import { AppError } from "@/errors";
 import { fileRepository, folderRepository } from "@/repositories";
-import type { CreateFileBody } from "@/validators";
+import type { UploadFileBody } from "@/validators";
 
 export type UploadedFile = {
   originalname: string;
@@ -20,9 +20,9 @@ function toFileResponse<T extends { size: bigint }>(file: T) {
   };
 }
 
-export async function createFile(
+export async function uploadFile(
   ownerId: string,
-  input: CreateFileBody,
+  input: UploadFileBody,
   uploaded: UploadedFile,
 ) {
   const folderId = input.folder_id ?? null;

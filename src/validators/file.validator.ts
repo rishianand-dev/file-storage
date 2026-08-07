@@ -1,7 +1,7 @@
 import { z } from "zod";
 
-export const createFileBodySchema = z.object({
+export const uploadFileBodySchema = z.object({
   folder_id: z.uuid("Invalid folder id").nullable().optional(),
 });
 
-export type CreateFileBody = z.infer<typeof createFileBodySchema>;
+export type UploadFileBody = z.infer<typeof uploadFileBodySchema>;

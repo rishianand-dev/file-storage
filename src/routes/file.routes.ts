@@ -1,7 +1,7 @@
 import { Router } from "express";
-import { createFile } from "@/controllers/file.controller";
+import { uploadFile } from "@/controllers/file.controller";
 import { authenticate, uploadSingleFile, validate } from "@/middleware";
-import { createFileBodySchema } from "@/validators";
+import { uploadFileBodySchema } from "@/validators";
 
 const fileRoutes = Router();
 
@@ -9,8 +9,8 @@ fileRoutes.post(
   "/",
   authenticate,
   uploadSingleFile,
-  validate({ body: createFileBodySchema }),
-  createFile,
+  validate({ body: uploadFileBodySchema }),
+  uploadFile,
 );
 
 export default fileRoutes;

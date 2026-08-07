@@ -11,4 +11,4 @@ export {
 } from "./auth.service";
 export { getMe, updateMe } from "./user.service";
 export { createFolder } from "./folder.service";
-export { createFile } from "./file.service";
+export { uploadFile } from "./file.service";
