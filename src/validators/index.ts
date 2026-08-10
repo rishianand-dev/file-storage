@@ -15,11 +15,27 @@ export {
   folderIdParamsSchema,
   createFolderBodySchema,
   renameFolderBodySchema,
+  moveFolderBodySchema,
   type FolderIdParams,
   type CreateFolderBody,
   type RenameFolderBody,
+  type MoveFolderBody,
 } from "./folder.validator";
 export {
   uploadFileBodySchema,
   type UploadFileBody,
 } from "./file.validator";
+export {
+  trackRecentlyOpenedBodySchema,
+  listRecentlyOpenedQuerySchema,
+  type TrackRecentlyOpenedBody,
+  type ListRecentlyOpenedQuery,
+} from "./recently-opened.validator";
+export {
+  starFolderBodySchema,
+  starredFolderParamsSchema,
+  listStarredFoldersQuerySchema,
+  type StarFolderBody,
+  type StarredFolderParams,
+  type ListStarredFoldersQuery,
+} from "./starred-folder.validator";

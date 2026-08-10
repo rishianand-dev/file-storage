@@ -1,6 +1,7 @@
 import { Router } from "express";
 import {
   createFolder,
+  moveFolder,
   permanentDeleteFolder,
   renameFolder,
   softDeleteFolder,
@@ -9,6 +10,7 @@ import { authenticate, validate } from "@/middleware";
 import {
   createFolderBodySchema,
   folderIdParamsSchema,
+  moveFolderBodySchema,
   renameFolderBodySchema,
 } from "@/validators";
 
@@ -19,6 +21,13 @@ folderRoutes.post(
   authenticate,
   validate({ body: createFolderBodySchema }),
   createFolder,
+);
+
+folderRoutes.patch(
+  "/:id/move",
+  authenticate,
+  validate({ params: folderIdParamsSchema, body: moveFolderBodySchema }),
+  moveFolder,
 );
 
 folderRoutes.patch(

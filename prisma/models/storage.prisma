@@ -17,11 +17,12 @@ model Folder {
   updated_at DateTime @updatedAt
 
   files File[]
+  starred_folders StarredFolder[]
 
+  @@unique([owner_id, parent_id, name])
   @@index([owner_id])
   @@index([parent_id])
   @@index([deleted_at])
-  @@unique([owner_id, parent_id, name])
 }
 
 model File {
@@ -47,8 +48,10 @@ model File {
   created_at DateTime @default(now())
   updated_at DateTime @updatedAt
 
+  recently_opened RecentlyOpened[]
+
+  @@unique([owner_id, folder_id, name])
   @@index([owner_id])
   @@index([folder_id])
   @@index([deleted_at])
-  @@unique([owner_id, folder_id, name])
 }

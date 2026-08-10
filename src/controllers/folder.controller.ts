@@ -4,6 +4,7 @@ import * as folderService from "@/services/folder.service";
 import type {
   CreateFolderBody,
   FolderIdParams,
+  MoveFolderBody,
   RenameFolderBody,
 } from "@/validators";
 
@@ -30,6 +31,17 @@ export async function renameFolder(req: Request, res: Response): Promise<void> {
     user.id,
     id,
     req.body as RenameFolderBody,
+  );
+  res.status(200).json({ status: "success", data: result });
+}
+
+export async function moveFolder(req: Request, res: Response): Promise<void> {
+  const user = requireUser(req);
+  const { id } = req.params as FolderIdParams;
+  const result = await folderService.moveFolder(
+    user.id,
+    id,
+    req.body as MoveFolderBody,
   );
   res.status(200).json({ status: "success", data: result });
 }

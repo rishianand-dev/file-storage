@@ -1,14 +1,16 @@
 model User {
-  id                    String              @id @default(uuid())
-  name                  String              @default("")
-  email                 String              @unique
-  hashed_password       String? // null for OAuth-only users
-  image                 String?
-  accounts              Account[]
-  refresh_tokens        RefreshToken[]
-  password_reset_token  PasswordResetToken?
-  folders               Folder[]
-  files                 File[]
-  created_at            DateTime            @default(now())
-  updated_at            DateTime            @updatedAt
+  id                   String              @id @default(uuid())
+  name                 String              @default("")
+  email                String              @unique
+  hashed_password      String? // null for OAuth-only users
+  image                String?
+  accounts             Account[]
+  refresh_tokens       RefreshToken[]
+  password_reset_token PasswordResetToken?
+  folders              Folder[]
+  files                File[]
+  recently_opened      RecentlyOpened[]
+  starred_folders      StarredFolder[]
+  created_at           DateTime            @default(now())
+  updated_at           DateTime            @updatedAt
 }

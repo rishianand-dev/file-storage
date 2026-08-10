@@ -31,19 +31,10 @@ export async function create(data: {
   });
 }
 
-export async function softDeleteByFolderIds(
-  owner_id: string,
-  folder_ids: string[],
-) {
-  if (folder_ids.length === 0) return { count: 0 };
-
-  return prisma.file.updateMany({
-    where: {
-      owner_id,
-      folder_id: { in: folder_ids },
-      deleted_at: null,
-    },
-    data: { deleted_at: new Date() },
+export async function findOwnedById(owner_id: string, id: string) {
+  return prisma.file.findFirst({
+    where: { id, owner_id, deleted_at: null },
+    select: fileSelect,
   });
 }
 
@@ -59,13 +50,5 @@ export async function findByFolderIds(owner_id: string, folder_ids: string[]) {
       id: true,
       storage_path: true,
     },
-  });
-}
-
-export async function hardDeleteByIds(ids: string[]) {
-  if (ids.length === 0) return { count: 0 };
-
-  return prisma.file.deleteMany({
-    where: { id: { in: ids } },
   });
 }

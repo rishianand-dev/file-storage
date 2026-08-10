@@ -1,0 +1,14 @@
+model RecentlyOpened {
+  id String @id @default(uuid())
+
+  user_id String
+  file_id String
+
+  opened_at DateTime @default(now())
+
+  user User @relation(fields: [user_id], references: [id], onDelete: Cascade)
+  file File @relation(fields: [file_id], references: [id], onDelete: Cascade)
+
+  @@unique([user_id, file_id])
+  @@index([user_id, opened_at(sort: Desc)])
+}

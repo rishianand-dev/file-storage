@@ -1,0 +1,14 @@
+model StarredFolder {
+  id String @id @default(uuid())
+
+  user_id   String
+  folder_id String
+
+  starred_at DateTime @default(now())
+
+  user   User   @relation(fields: [user_id], references: [id], onDelete: Cascade)
+  folder Folder @relation(fields: [folder_id], references: [id], onDelete: Cascade)
+
+  @@unique([user_id, folder_id])
+  @@index([user_id, starred_at(sort: Desc)])
+}

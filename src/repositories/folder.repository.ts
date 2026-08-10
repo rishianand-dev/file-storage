@@ -40,6 +40,14 @@ export async function rename(id: string, name: string) {
   });
 }
 
+export async function move(id: string, parent_id: string | null) {
+  return prisma.folder.update({
+    where: { id },
+    data: { parent_id },
+    select: folderSelect,
+  });
+}
+
 export async function findOwnedByIdIncludingDeleted(
   owner_id: string,
   id: string,
@@ -67,19 +75,47 @@ export async function findChildIds(
   return folders.map((folder) => folder.id);
 }
 
-export async function softDeleteMany(ids: string[]) {
-  if (ids.length === 0) return { count: 0 };
+/**
+ * Soft-deletes folders and their files in one transaction.
+ */
+export async function softDeleteTree(owner_id: string, folder_ids: string[]) {
+  if (folder_ids.length === 0) return;
 
-  return prisma.folder.updateMany({
-    where: { id: { in: ids }, deleted_at: null },
-    data: { deleted_at: new Date() },
-  });
+  const deleted_at = new Date();
+
+  await prisma.$transaction([
+    prisma.file.updateMany({
+      where: {
+        owner_id,
+        folder_id: { in: folder_ids },
+        deleted_at: null,
+      },
+      data: { deleted_at },
+    }),
+    prisma.folder.updateMany({
+      where: { id: { in: folder_ids }, deleted_at: null },
+      data: { deleted_at },
+    }),
+  ]);
 }
 
-export async function hardDeleteMany(ids: string[]) {
-  if (ids.length === 0) return { count: 0 };
+/**
+ * Permanently deletes files then folders in one transaction.
+ */
+export async function hardDeleteTree(folder_ids: string[], file_ids: string[]) {
+  if (folder_ids.length === 0 && file_ids.length === 0) return;
 
-  return prisma.folder.deleteMany({
-    where: { id: { in: ids } },
+  await prisma.$transaction(async (tx) => {
+    if (file_ids.length > 0) {
+      await tx.file.deleteMany({
+        where: { id: { in: file_ids } },
+      });
+    }
+
+    if (folder_ids.length > 0) {
+      await tx.folder.deleteMany({
+        where: { id: { in: folder_ids } },
+      });
+    }
   });
 }

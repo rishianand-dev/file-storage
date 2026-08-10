@@ -3,7 +3,11 @@ import path from "node:path";
 import { Prisma } from "@generated/prisma/client";
 import { AppError } from "@/errors";
 import { fileRepository, folderRepository } from "@/repositories";
-import type { CreateFolderBody, RenameFolderBody } from "@/validators";
+import type {
+  CreateFolderBody,
+  MoveFolderBody,
+  RenameFolderBody,
+} from "@/validators";
 
 function mapUniqueNameConflict(error: unknown): never {
   if (
@@ -81,6 +85,45 @@ export async function renameFolder(
   }
 }
 
+export async function moveFolder(
+  ownerId: string,
+  folderId: string,
+  input: MoveFolderBody,
+) {
+  const folder = await folderRepository.findOwnedById(ownerId, folderId);
+  if (!folder) {
+    throw new AppError("Folder not found", 404);
+  }
+
+  const parentId = input.parent_id;
+
+  if (parentId === folderId) {
+    throw new AppError("A folder cannot be moved into itself", 400);
+  }
+
+  if (parentId !== null) {
+    const parent = await folderRepository.findOwnedById(ownerId, parentId);
+    if (!parent) {
+      throw new AppError("Parent folder not found", 404);
+    }
+
+    const treeIds = await collectFolderTreeIds(ownerId, folderId);
+    if (treeIds.includes(parentId)) {
+      throw new AppError("A folder cannot be moved into its descendant", 400);
+    }
+  }
+
+  if (folder.parent_id === parentId) {
+    throw new AppError("Folder is already in this location", 400);
+  }
+
+  try {
+    return await folderRepository.move(folder.id, parentId);
+  } catch (error) {
+    mapUniqueNameConflict(error);
+  }
+}
+
 /**
  * Soft-deletes a folder and cascades to nested folders and files.
  */
@@ -92,8 +135,7 @@ export async function softDeleteFolder(ownerId: string, folderId: string) {
 
   const folderIds = await collectFolderTreeIds(ownerId, folder.id);
 
-  await fileRepository.softDeleteByFolderIds(ownerId, folderIds);
-  await folderRepository.softDeleteMany(folderIds);
+  await folderRepository.softDeleteTree(ownerId, folderIds);
 
   return {
     id: folder.id,
@@ -124,8 +166,10 @@ export async function permanentDeleteFolder(ownerId: string, folderId: string) {
 
   const files = await fileRepository.findByFolderIds(ownerId, folderIds);
 
-  await fileRepository.hardDeleteByIds(files.map((file) => file.id));
-  await folderRepository.hardDeleteMany(folderIds);
+  await folderRepository.hardDeleteTree(
+    folderIds,
+    files.map((file) => file.id),
+  );
 
   await Promise.all(
     files.map((file) =>
