@@ -17,6 +17,13 @@ export const openApiSpec: OpenAPIV3.Document = {
     { name: "Health", description: "Service health checks" },
     { name: "Auth", description: "Authentication endpoints" },
     { name: "Me", description: "Current authenticated user" },
+    { name: "Folders", description: "Folder create, rename, move, and delete" },
+    { name: "Files", description: "File upload and storage" },
+    {
+      name: "Recently Opened",
+      description: "Track and list recently opened files",
+    },
+    { name: "Starred Folders", description: "Star and list favorite folders" },
   ],
   paths: {
     "/health": {
@@ -399,6 +406,679 @@ export const openApiSpec: OpenAPIV3.Document = {
         },
       },
     },
+    "/folders": {
+      post: {
+        tags: ["Folders"],
+        summary: "Create folder",
+        description:
+          "Creates a folder for the authenticated user. Omit or null `parent_id` for a root folder.",
+        security: [{ bearerAuth: [] }],
+        requestBody: {
+          required: true,
+          content: {
+            "application/json": {
+              schema: { $ref: "#/components/schemas/CreateFolderBody" },
+            },
+          },
+        },
+        responses: {
+          "201": {
+            description: "Folder created",
+            content: {
+              "application/json": {
+                schema: {
+                  $ref: "#/components/schemas/FolderSuccessResponse",
+                },
+              },
+            },
+          },
+          "400": {
+            description: "Validation failed",
+            content: {
+              "application/json": {
+                schema: {
+                  $ref: "#/components/schemas/ValidationErrorResponse",
+                },
+              },
+            },
+          },
+          "401": {
+            description: "Missing or invalid token",
+            content: {
+              "application/json": {
+                schema: { $ref: "#/components/schemas/ErrorResponse" },
+              },
+            },
+          },
+          "404": {
+            description: "Parent folder not found",
+            content: {
+              "application/json": {
+                schema: { $ref: "#/components/schemas/ErrorResponse" },
+              },
+            },
+          },
+          "409": {
+            description: "Folder name already exists in this location",
+            content: {
+              "application/json": {
+                schema: { $ref: "#/components/schemas/ErrorResponse" },
+              },
+            },
+          },
+        },
+      },
+    },
+    "/folders/{id}": {
+      patch: {
+        tags: ["Folders"],
+        summary: "Rename folder",
+        description: "Renames an owned folder.",
+        security: [{ bearerAuth: [] }],
+        parameters: [
+          {
+            name: "id",
+            in: "path",
+            required: true,
+            schema: { type: "string", format: "uuid" },
+            description: "Folder id",
+          },
+        ],
+        requestBody: {
+          required: true,
+          content: {
+            "application/json": {
+              schema: { $ref: "#/components/schemas/RenameFolderBody" },
+            },
+          },
+        },
+        responses: {
+          "200": {
+            description: "Folder renamed",
+            content: {
+              "application/json": {
+                schema: {
+                  $ref: "#/components/schemas/FolderSuccessResponse",
+                },
+              },
+            },
+          },
+          "400": {
+            description: "Validation failed",
+            content: {
+              "application/json": {
+                schema: {
+                  $ref: "#/components/schemas/ValidationErrorResponse",
+                },
+              },
+            },
+          },
+          "401": {
+            description: "Missing or invalid token",
+            content: {
+              "application/json": {
+                schema: { $ref: "#/components/schemas/ErrorResponse" },
+              },
+            },
+          },
+          "404": {
+            description: "Folder not found",
+            content: {
+              "application/json": {
+                schema: { $ref: "#/components/schemas/ErrorResponse" },
+              },
+            },
+          },
+          "409": {
+            description: "Folder name already exists in this location",
+            content: {
+              "application/json": {
+                schema: { $ref: "#/components/schemas/ErrorResponse" },
+              },
+            },
+          },
+        },
+      },
+      delete: {
+        tags: ["Folders"],
+        summary: "Soft-delete folder",
+        description:
+          "Soft-deletes a folder and cascades to nested folders and files.",
+        security: [{ bearerAuth: [] }],
+        parameters: [
+          {
+            name: "id",
+            in: "path",
+            required: true,
+            schema: { type: "string", format: "uuid" },
+            description: "Folder id",
+          },
+        ],
+        responses: {
+          "200": {
+            description: "Folder soft-deleted",
+            content: {
+              "application/json": {
+                schema: {
+                  $ref: "#/components/schemas/SoftDeleteFolderSuccessResponse",
+                },
+              },
+            },
+          },
+          "400": {
+            description: "Validation failed",
+            content: {
+              "application/json": {
+                schema: {
+                  $ref: "#/components/schemas/ValidationErrorResponse",
+                },
+              },
+            },
+          },
+          "401": {
+            description: "Missing or invalid token",
+            content: {
+              "application/json": {
+                schema: { $ref: "#/components/schemas/ErrorResponse" },
+              },
+            },
+          },
+          "404": {
+            description: "Folder not found",
+            content: {
+              "application/json": {
+                schema: { $ref: "#/components/schemas/ErrorResponse" },
+              },
+            },
+          },
+        },
+      },
+    },
+    "/folders/{id}/move": {
+      patch: {
+        tags: ["Folders"],
+        summary: "Move folder",
+        description:
+          "Moves a folder under a new parent. Pass `null` for `parent_id` to move to root.",
+        security: [{ bearerAuth: [] }],
+        parameters: [
+          {
+            name: "id",
+            in: "path",
+            required: true,
+            schema: { type: "string", format: "uuid" },
+            description: "Folder id",
+          },
+        ],
+        requestBody: {
+          required: true,
+          content: {
+            "application/json": {
+              schema: { $ref: "#/components/schemas/MoveFolderBody" },
+            },
+          },
+        },
+        responses: {
+          "200": {
+            description: "Folder moved",
+            content: {
+              "application/json": {
+                schema: {
+                  $ref: "#/components/schemas/FolderSuccessResponse",
+                },
+              },
+            },
+          },
+          "400": {
+            description:
+              "Validation failed, invalid move target, or already in location",
+            content: {
+              "application/json": {
+                schema: {
+                  oneOf: [
+                    { $ref: "#/components/schemas/ValidationErrorResponse" },
+                    { $ref: "#/components/schemas/ErrorResponse" },
+                  ],
+                },
+              },
+            },
+          },
+          "401": {
+            description: "Missing or invalid token",
+            content: {
+              "application/json": {
+                schema: { $ref: "#/components/schemas/ErrorResponse" },
+              },
+            },
+          },
+          "404": {
+            description: "Folder or parent folder not found",
+            content: {
+              "application/json": {
+                schema: { $ref: "#/components/schemas/ErrorResponse" },
+              },
+            },
+          },
+          "409": {
+            description: "Folder name already exists in destination",
+            content: {
+              "application/json": {
+                schema: { $ref: "#/components/schemas/ErrorResponse" },
+              },
+            },
+          },
+        },
+      },
+    },
+    "/folders/{id}/permanent": {
+      delete: {
+        tags: ["Folders"],
+        summary: "Permanently delete folder",
+        description:
+          "Permanently deletes a soft-deleted folder tree from the database and disk. Soft-delete first.",
+        security: [{ bearerAuth: [] }],
+        parameters: [
+          {
+            name: "id",
+            in: "path",
+            required: true,
+            schema: { type: "string", format: "uuid" },
+            description: "Folder id",
+          },
+        ],
+        responses: {
+          "200": {
+            description: "Folder permanently deleted",
+            content: {
+              "application/json": {
+                schema: {
+                  $ref: "#/components/schemas/PermanentDeleteFolderSuccessResponse",
+                },
+              },
+            },
+          },
+          "400": {
+            description:
+              "Validation failed, or folder has not been soft-deleted yet",
+            content: {
+              "application/json": {
+                schema: {
+                  oneOf: [
+                    { $ref: "#/components/schemas/ValidationErrorResponse" },
+                    { $ref: "#/components/schemas/ErrorResponse" },
+                  ],
+                },
+              },
+            },
+          },
+          "401": {
+            description: "Missing or invalid token",
+            content: {
+              "application/json": {
+                schema: { $ref: "#/components/schemas/ErrorResponse" },
+              },
+            },
+          },
+          "404": {
+            description: "Folder not found",
+            content: {
+              "application/json": {
+                schema: { $ref: "#/components/schemas/ErrorResponse" },
+              },
+            },
+          },
+        },
+      },
+    },
+    "/files": {
+      post: {
+        tags: ["Files"],
+        summary: "Upload file",
+        description:
+          "Uploads a single file (multipart field `file`, max 50MB). Omit or null `folder_id` to upload to root.",
+        security: [{ bearerAuth: [] }],
+        requestBody: {
+          required: true,
+          content: {
+            "multipart/form-data": {
+              schema: {
+                type: "object",
+                required: ["file"],
+                properties: {
+                  file: {
+                    type: "string",
+                    format: "binary",
+                    description: "File to upload",
+                  },
+                  folder_id: {
+                    type: "string",
+                    format: "uuid",
+                    nullable: true,
+                    description: "Destination folder id, or null for root",
+                  },
+                },
+              },
+            },
+          },
+        },
+        responses: {
+          "201": {
+            description: "File uploaded",
+            content: {
+              "application/json": {
+                schema: { $ref: "#/components/schemas/FileSuccessResponse" },
+              },
+            },
+          },
+          "400": {
+            description: "Validation failed or missing file",
+            content: {
+              "application/json": {
+                schema: {
+                  oneOf: [
+                    { $ref: "#/components/schemas/ValidationErrorResponse" },
+                    { $ref: "#/components/schemas/ErrorResponse" },
+                  ],
+                },
+              },
+            },
+          },
+          "401": {
+            description: "Missing or invalid token",
+            content: {
+              "application/json": {
+                schema: { $ref: "#/components/schemas/ErrorResponse" },
+              },
+            },
+          },
+          "404": {
+            description: "Folder not found",
+            content: {
+              "application/json": {
+                schema: { $ref: "#/components/schemas/ErrorResponse" },
+              },
+            },
+          },
+          "409": {
+            description: "File name already exists in this location",
+            content: {
+              "application/json": {
+                schema: { $ref: "#/components/schemas/ErrorResponse" },
+              },
+            },
+          },
+        },
+      },
+    },
+    "/recently-opened": {
+      get: {
+        tags: ["Recently Opened"],
+        summary: "List recently opened files",
+        description:
+          "Returns recently opened files for the authenticated user, newest first.",
+        security: [{ bearerAuth: [] }],
+        parameters: [
+          {
+            name: "limit",
+            in: "query",
+            required: false,
+            schema: {
+              type: "integer",
+              minimum: 1,
+              maximum: 100,
+              default: 20,
+            },
+            description: "Max number of items to return",
+          },
+        ],
+        responses: {
+          "200": {
+            description: "Recently opened list",
+            content: {
+              "application/json": {
+                schema: {
+                  $ref: "#/components/schemas/RecentlyOpenedListSuccessResponse",
+                },
+              },
+            },
+          },
+          "400": {
+            description: "Validation failed",
+            content: {
+              "application/json": {
+                schema: {
+                  $ref: "#/components/schemas/ValidationErrorResponse",
+                },
+              },
+            },
+          },
+          "401": {
+            description: "Missing or invalid token",
+            content: {
+              "application/json": {
+                schema: { $ref: "#/components/schemas/ErrorResponse" },
+              },
+            },
+          },
+        },
+      },
+      post: {
+        tags: ["Recently Opened"],
+        summary: "Track recently opened file",
+        description:
+          "Records or refreshes that the authenticated user opened a file.",
+        security: [{ bearerAuth: [] }],
+        requestBody: {
+          required: true,
+          content: {
+            "application/json": {
+              schema: {
+                $ref: "#/components/schemas/TrackRecentlyOpenedBody",
+              },
+            },
+          },
+        },
+        responses: {
+          "200": {
+            description: "Recently opened entry upserted",
+            content: {
+              "application/json": {
+                schema: {
+                  $ref: "#/components/schemas/RecentlyOpenedSuccessResponse",
+                },
+              },
+            },
+          },
+          "400": {
+            description: "Validation failed",
+            content: {
+              "application/json": {
+                schema: {
+                  $ref: "#/components/schemas/ValidationErrorResponse",
+                },
+              },
+            },
+          },
+          "401": {
+            description: "Missing or invalid token",
+            content: {
+              "application/json": {
+                schema: { $ref: "#/components/schemas/ErrorResponse" },
+              },
+            },
+          },
+          "404": {
+            description: "File not found",
+            content: {
+              "application/json": {
+                schema: { $ref: "#/components/schemas/ErrorResponse" },
+              },
+            },
+          },
+        },
+      },
+    },
+    "/starred-folders": {
+      get: {
+        tags: ["Starred Folders"],
+        summary: "List starred folders",
+        description:
+          "Returns starred folders for the authenticated user, most recently starred first.",
+        security: [{ bearerAuth: [] }],
+        parameters: [
+          {
+            name: "limit",
+            in: "query",
+            required: false,
+            schema: {
+              type: "integer",
+              minimum: 1,
+              maximum: 100,
+              default: 20,
+            },
+            description: "Max number of items to return",
+          },
+        ],
+        responses: {
+          "200": {
+            description: "Starred folders list",
+            content: {
+              "application/json": {
+                schema: {
+                  $ref: "#/components/schemas/StarredFolderListSuccessResponse",
+                },
+              },
+            },
+          },
+          "400": {
+            description: "Validation failed",
+            content: {
+              "application/json": {
+                schema: {
+                  $ref: "#/components/schemas/ValidationErrorResponse",
+                },
+              },
+            },
+          },
+          "401": {
+            description: "Missing or invalid token",
+            content: {
+              "application/json": {
+                schema: { $ref: "#/components/schemas/ErrorResponse" },
+              },
+            },
+          },
+        },
+      },
+      post: {
+        tags: ["Starred Folders"],
+        summary: "Star folder",
+        description:
+          "Stars a folder (or refreshes `starred_at` if already starred).",
+        security: [{ bearerAuth: [] }],
+        requestBody: {
+          required: true,
+          content: {
+            "application/json": {
+              schema: { $ref: "#/components/schemas/StarFolderBody" },
+            },
+          },
+        },
+        responses: {
+          "201": {
+            description: "Folder starred",
+            content: {
+              "application/json": {
+                schema: {
+                  $ref: "#/components/schemas/StarredFolderSuccessResponse",
+                },
+              },
+            },
+          },
+          "400": {
+            description: "Validation failed",
+            content: {
+              "application/json": {
+                schema: {
+                  $ref: "#/components/schemas/ValidationErrorResponse",
+                },
+              },
+            },
+          },
+          "401": {
+            description: "Missing or invalid token",
+            content: {
+              "application/json": {
+                schema: { $ref: "#/components/schemas/ErrorResponse" },
+              },
+            },
+          },
+          "404": {
+            description: "Folder not found",
+            content: {
+              "application/json": {
+                schema: { $ref: "#/components/schemas/ErrorResponse" },
+              },
+            },
+          },
+        },
+      },
+    },
+    "/starred-folders/{folderId}": {
+      delete: {
+        tags: ["Starred Folders"],
+        summary: "Unstar folder",
+        description: "Removes a folder from the authenticated user's stars.",
+        security: [{ bearerAuth: [] }],
+        parameters: [
+          {
+            name: "folderId",
+            in: "path",
+            required: true,
+            schema: { type: "string", format: "uuid" },
+            description: "Folder id to unstar",
+          },
+        ],
+        responses: {
+          "200": {
+            description: "Folder unstarred",
+            content: {
+              "application/json": {
+                schema: {
+                  $ref: "#/components/schemas/UnstarFolderSuccessResponse",
+                },
+              },
+            },
+          },
+          "400": {
+            description: "Validation failed",
+            content: {
+              "application/json": {
+                schema: {
+                  $ref: "#/components/schemas/ValidationErrorResponse",
+                },
+              },
+            },
+          },
+          "401": {
+            description: "Missing or invalid token",
+            content: {
+              "application/json": {
+                schema: { $ref: "#/components/schemas/ErrorResponse" },
+              },
+            },
+          },
+          "404": {
+            description: "Folder not found or not starred",
+            content: {
+              "application/json": {
+                schema: { $ref: "#/components/schemas/ErrorResponse" },
+              },
+            },
+          },
+        },
+      },
+    },
   },
   components: {
     schemas: {
@@ -585,6 +1265,230 @@ export const openApiSpec: OpenAPIV3.Document = {
                 type: "string",
                 description: "Rotated refresh token",
               },
+            },
+          },
+        },
+      },
+      CreateFolderBody: {
+        type: "object",
+        required: ["name"],
+        properties: {
+          name: {
+            type: "string",
+            minLength: 1,
+            maxLength: 255,
+            example: "Documents",
+          },
+          parent_id: {
+            type: "string",
+            format: "uuid",
+            nullable: true,
+            description: "Parent folder id, or null/omit for root",
+          },
+        },
+      },
+      RenameFolderBody: {
+        type: "object",
+        required: ["name"],
+        properties: {
+          name: {
+            type: "string",
+            minLength: 1,
+            maxLength: 255,
+            example: "Work docs",
+          },
+        },
+      },
+      MoveFolderBody: {
+        type: "object",
+        required: ["parent_id"],
+        properties: {
+          parent_id: {
+            type: "string",
+            format: "uuid",
+            nullable: true,
+            description: "New parent folder id, or null for root",
+          },
+        },
+      },
+      Folder: {
+        type: "object",
+        properties: {
+          id: { type: "string", format: "uuid" },
+          name: { type: "string" },
+          parent_id: { type: "string", format: "uuid", nullable: true },
+          owner_id: { type: "string", format: "uuid" },
+          deleted_at: {
+            type: "string",
+            format: "date-time",
+            nullable: true,
+          },
+          created_at: { type: "string", format: "date-time" },
+          updated_at: { type: "string", format: "date-time" },
+        },
+      },
+      FolderSuccessResponse: {
+        type: "object",
+        properties: {
+          status: { type: "string", example: "success" },
+          data: { $ref: "#/components/schemas/Folder" },
+        },
+      },
+      SoftDeleteFolderSuccessResponse: {
+        type: "object",
+        properties: {
+          status: { type: "string", example: "success" },
+          data: {
+            type: "object",
+            properties: {
+              id: { type: "string", format: "uuid" },
+              deleted_folders: {
+                type: "integer",
+                description: "Number of folders soft-deleted in the tree",
+                example: 3,
+              },
+            },
+          },
+        },
+      },
+      PermanentDeleteFolderSuccessResponse: {
+        type: "object",
+        properties: {
+          status: { type: "string", example: "success" },
+          data: {
+            type: "object",
+            properties: {
+              id: { type: "string", format: "uuid" },
+              deleted_folders: {
+                type: "integer",
+                description: "Number of folders permanently deleted",
+                example: 3,
+              },
+              deleted_files: {
+                type: "integer",
+                description: "Number of files permanently deleted",
+                example: 5,
+              },
+            },
+          },
+        },
+      },
+      File: {
+        type: "object",
+        properties: {
+          id: { type: "string", format: "uuid" },
+          name: { type: "string", example: "report.pdf" },
+          extension: { type: "string", example: "pdf" },
+          mime_type: { type: "string", example: "application/pdf" },
+          storage_name: { type: "string" },
+          storage_path: { type: "string" },
+          size: {
+            type: "string",
+            description: "File size in bytes as a string",
+            example: "1024",
+          },
+          folder_id: { type: "string", format: "uuid", nullable: true },
+          owner_id: { type: "string", format: "uuid" },
+          deleted_at: {
+            type: "string",
+            format: "date-time",
+            nullable: true,
+          },
+          created_at: { type: "string", format: "date-time" },
+          updated_at: { type: "string", format: "date-time" },
+        },
+      },
+      FileSuccessResponse: {
+        type: "object",
+        properties: {
+          status: { type: "string", example: "success" },
+          data: { $ref: "#/components/schemas/File" },
+        },
+      },
+      TrackRecentlyOpenedBody: {
+        type: "object",
+        required: ["file_id"],
+        properties: {
+          file_id: {
+            type: "string",
+            format: "uuid",
+            description: "Id of the file that was opened",
+          },
+        },
+      },
+      RecentlyOpened: {
+        type: "object",
+        properties: {
+          id: { type: "string", format: "uuid" },
+          user_id: { type: "string", format: "uuid" },
+          file_id: { type: "string", format: "uuid" },
+          opened_at: { type: "string", format: "date-time" },
+          file: { $ref: "#/components/schemas/File" },
+        },
+      },
+      RecentlyOpenedSuccessResponse: {
+        type: "object",
+        properties: {
+          status: { type: "string", example: "success" },
+          data: { $ref: "#/components/schemas/RecentlyOpened" },
+        },
+      },
+      RecentlyOpenedListSuccessResponse: {
+        type: "object",
+        properties: {
+          status: { type: "string", example: "success" },
+          data: {
+            type: "array",
+            items: { $ref: "#/components/schemas/RecentlyOpened" },
+          },
+        },
+      },
+      StarFolderBody: {
+        type: "object",
+        required: ["folder_id"],
+        properties: {
+          folder_id: {
+            type: "string",
+            format: "uuid",
+            description: "Id of the folder to star",
+          },
+        },
+      },
+      StarredFolder: {
+        type: "object",
+        properties: {
+          id: { type: "string", format: "uuid" },
+          user_id: { type: "string", format: "uuid" },
+          folder_id: { type: "string", format: "uuid" },
+          starred_at: { type: "string", format: "date-time" },
+          folder: { $ref: "#/components/schemas/Folder" },
+        },
+      },
+      StarredFolderSuccessResponse: {
+        type: "object",
+        properties: {
+          status: { type: "string", example: "success" },
+          data: { $ref: "#/components/schemas/StarredFolder" },
+        },
+      },
+      StarredFolderListSuccessResponse: {
+        type: "object",
+        properties: {
+          status: { type: "string", example: "success" },
+          data: {
+            type: "array",
+            items: { $ref: "#/components/schemas/StarredFolder" },
+          },
+        },
+      },
+      UnstarFolderSuccessResponse: {
+        type: "object",
+        properties: {
+          status: { type: "string", example: "success" },
+          data: {
+            type: "object",
+            properties: {
+              folder_id: { type: "string", format: "uuid" },
             },
           },
         },
