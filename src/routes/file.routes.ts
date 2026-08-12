@@ -1,7 +1,7 @@
 import { Router } from "express";
-import { uploadFile } from "@/controllers/file.controller";
+import { renameFile, uploadFile } from "@/controllers/file.controller";
 import { authenticate, uploadSingleFile, validate } from "@/middleware";
-import { uploadFileBodySchema } from "@/validators";
+import { renameFileBodySchema, uploadFileBodySchema } from "@/validators";
 
 const fileRoutes = Router();
 
@@ -12,5 +12,12 @@ fileRoutes.post(
   validate({ body: uploadFileBodySchema }),
   uploadFile,
 );
+
+fileRoutes.post(
+  "/rename",
+  authenticate,
+  validate({ body: renameFileBodySchema }),
+  renameFile,
+)
 
 export default fileRoutes;

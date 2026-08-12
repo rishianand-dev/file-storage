@@ -3,7 +3,8 @@ import path from "node:path";
 import { Prisma } from "@generated/prisma/client";
 import { AppError } from "@/errors";
 import { fileRepository, folderRepository } from "@/repositories";
-import type { UploadFileBody } from "@/validators";
+import type { RenameFileBody, UploadFileBody } from "@/validators";
+import { randomUUID } from "node:crypto";
 
 export type UploadedFile = {
   originalname: string;
@@ -37,7 +38,7 @@ export async function uploadFile(
 
   const extension = path.extname(uploaded.originalname).replace(/^\./, "");
   const storage_name = uploaded.filename;
-  const storage_path = path.join("uploads", ownerId, storage_name);
+  const storage_path = path.join("uploads", storage_name);
 
   try {
     const file = await fileRepository.create({
@@ -55,6 +56,43 @@ export async function uploadFile(
   } catch (error) {
     await fs.unlink(uploaded.path).catch(() => undefined);
 
+    if (
+      error instanceof Prisma.PrismaClientKnownRequestError &&
+      error.code === "P2002"
+    ) {
+      throw new AppError(
+        "A file with this name already exists in this location",
+        409,
+      );
+    }
+    throw error;
+  }
+}
+
+export async function renameFile(ownerId: string, input: RenameFileBody) {
+  try {
+    if(input.name.length > 255) {
+      throw new AppError("Name is too long", 400);
+    }
+    const file = await fileRepository.findOwnedById(ownerId, input.file_id);
+    if (!file) {
+      throw new AppError("File not found", 404);
+    }
+
+    const newName = input.name;
+    const newExtension = path.extname(newName).replace(/^\./, "");
+    const newStorageName = `${randomUUID()}${newExtension}`;
+    const newStoragePath = path.join("uploads", newStorageName);
+
+    await fileRepository.update(file.id, {
+      name: newName,
+      extension: newExtension,
+      storage_name: newStorageName,
+      storage_path: newStoragePath,
+    });
+
+    return toFileResponse(file);
+  } catch (error) {
     if (
       error instanceof Prisma.PrismaClientKnownRequestError &&
       error.code === "P2002"

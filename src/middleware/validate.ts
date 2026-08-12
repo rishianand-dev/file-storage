@@ -1,3 +1,4 @@
+import fs from "node:fs/promises";
 import type { NextFunction, Request, Response } from "express";
 import { type ZodType, ZodError } from "zod";
 import { ValidationError } from "@/errors/ValidationError";
@@ -13,7 +14,11 @@ type RequestSchemas = {
  * On success, replaces those fields with the parsed (typed + transformed) values.
  */
 export function validate(schemas: RequestSchemas) {
-  return (req: Request, _res: Response, next: NextFunction): void => {
+  return async (
+    req: Request,
+    _res: Response,
+    next: NextFunction,
+  ): Promise<void> => {
     try {
       if (schemas.body) {
         req.body = schemas.body.parse(req.body);
@@ -27,6 +32,9 @@ export function validate(schemas: RequestSchemas) {
       next();
     } catch (error) {
       if (error instanceof ZodError) {
+        if (req.file?.path) {
+          await fs.unlink(req.file.path).catch(() => undefined);
+        }
         next(new ValidationError(error));
         return;
       }

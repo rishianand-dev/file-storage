@@ -8,15 +8,13 @@ const uploadRoot = path.join(process.cwd(), "uploads");
 
 const storage = multer.diskStorage({
   destination(req, _file, cb) {
-    const ownerId = req.user?.id;
-    if (!ownerId) {
+    if (!req.user?.id) {
       cb(new AppError("Authentication required", 401), "");
       return;
     }
 
-    const dir = path.join(uploadRoot, ownerId);
-    fs.mkdirSync(dir, { recursive: true });
-    cb(null, dir);
+    fs.mkdirSync(uploadRoot, { recursive: true });
+    cb(null, uploadRoot);
   },
   filename(_req, file, cb) {
     const ext = path.extname(file.originalname);
@@ -24,9 +22,6 @@ const storage = multer.diskStorage({
   },
 });
 
-/**
- * Expects field name `file`. Must run after `authenticate`.
- */
 export const uploadSingleFile = multer({
   storage,
   limits: { fileSize: 50 * 1024 * 1024 },

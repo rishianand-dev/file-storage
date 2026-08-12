@@ -23,7 +23,9 @@ export {
 } from "./folder.validator";
 export {
   uploadFileBodySchema,
+  renameFileBodySchema,
   type UploadFileBody,
+  type RenameFileBody,
 } from "./file.validator";
 export {
   trackRecentlyOpenedBodySchema,

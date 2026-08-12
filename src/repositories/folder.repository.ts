@@ -26,7 +26,7 @@ export async function create(data: {
     data: {
       name: data.name,
       owner_id: data.owner_id,
-      parent_id: data.parent_id,
+      parent_id: data?.parent_id ?? null,
     },
     select: folderSelect,
   });

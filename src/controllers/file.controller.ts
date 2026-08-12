@@ -1,7 +1,7 @@
 import type { Request, Response } from "express";
 import { AppError } from "@/errors";
 import * as fileService from "@/services/file.service";
-import type { UploadFileBody } from "@/validators";
+import type { RenameFileBody, UploadFileBody } from "@/validators";
 
 function requireUser(req: Request): { id: string; email: string } {
   if (!req.user) {
@@ -24,4 +24,10 @@ export async function uploadFile(req: Request, res: Response): Promise<void> {
   );
 
   res.status(201).json({ status: "success", data: result });
+}
+
+
+export async function renameFile(req: Request, res: Response): Promise<void> {
+  const user = requireUser(req);
+  const result = await fileService.renameFile(user.id, req.body as RenameFileBody);
 }

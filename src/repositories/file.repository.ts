@@ -52,3 +52,17 @@ export async function findByFolderIds(owner_id: string, folder_ids: string[]) {
     },
   });
 }
+
+
+export async function update(id: string, data: {
+  name: string;
+  extension: string;
+  storage_name: string;
+  storage_path: string;
+}) {
+  return prisma.file.update({
+    where: { id },
+    data,
+    select: fileSelect,
+  });
+}
