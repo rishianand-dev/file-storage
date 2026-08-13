@@ -2,7 +2,7 @@ import type { Request, Response } from "express";
 import { pipeline } from "node:stream/promises";
 import { AppError } from "@/errors";
 import * as fileService from "@/services/file.service";
-import { attachmentDisposition } from "@/utils";
+import { attachmentDisposition, inlineDisposition } from "@/utils";
 import type {
   FileIdParams,
   MoveFileBody,
@@ -78,26 +78,43 @@ export async function permanentDeleteFile(
   res.status(200).json({ status: "success", data: result });
 }
 
-export async function downloadFile(
+async function streamOwnedFile(
   req: Request,
   res: Response,
+  disposition: "inline" | "attachment",
 ): Promise<void> {
   const user = requireUser(req);
   const { id } = req.params as FileIdParams;
-  const download = await fileService.getFileForDownload(user.id, id);
+  const file = await fileService.getFileForDownload(user.id, id);
 
   res.status(200);
-  res.setHeader("Content-Type", download.mimeType || "application/octet-stream");
-  res.setHeader("Content-Length", download.size.toString());
-  res.setHeader("Content-Disposition", attachmentDisposition(download.name));
+  res.setHeader("Content-Type", file.mimeType || "application/octet-stream");
+  res.setHeader("Content-Length", file.size.toString());
+  res.setHeader(
+    "Content-Disposition",
+    disposition === "inline"
+      ? inlineDisposition(file.name)
+      : attachmentDisposition(file.name),
+  );
   res.setHeader("X-Content-Type-Options", "nosniff");
   res.setHeader("Cache-Control", "private, no-store");
 
   try {
-    await pipeline(download.stream, res);
+    await pipeline(file.stream, res);
   } catch (error) {
     if (!res.headersSent) {
       throw error;
     }
   }
+}
+
+export async function downloadFile(
+  req: Request,
+  res: Response,
+): Promise<void> {
+  await streamOwnedFile(req, res, "attachment");
+}
+
+export async function previewFile(req: Request, res: Response): Promise<void> {
+  await streamOwnedFile(req, res, "inline");
 }

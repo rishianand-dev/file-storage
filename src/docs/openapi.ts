@@ -18,7 +18,7 @@ export const openApiSpec: OpenAPIV3.Document = {
     { name: "Auth", description: "Authentication endpoints" },
     { name: "Me", description: "Current authenticated user" },
     { name: "Folders", description: "Folder create, rename, move, and delete" },
-    { name: "Files", description: "File upload, download, rename, move, trash, restore, and permanent delete" },
+    { name: "Files", description: "File upload, preview, download, rename, move, trash, restore, and permanent delete" },
     {
       name: "Recently Opened",
       description: "Track and list recently opened files",
@@ -803,6 +803,63 @@ export const openApiSpec: OpenAPIV3.Document = {
           },
           "409": {
             description: "File name already exists in this location",
+            content: {
+              "application/json": {
+                schema: { $ref: "#/components/schemas/ErrorResponse" },
+              },
+            },
+          },
+        },
+      },
+    },
+    "/files/{id}/preview": {
+      get: {
+        tags: ["Files"],
+        summary: "Preview file",
+        description:
+          "Streams an owned, non-trashed file for in-browser display (`Content-Disposition: inline`). Images, PDFs, and videos open in the browser; other types may download.",
+        security: [{ bearerAuth: [] }],
+        parameters: [
+          {
+            name: "id",
+            in: "path",
+            required: true,
+            schema: { type: "string", format: "uuid" },
+            description: "File id",
+          },
+        ],
+        responses: {
+          "200": {
+            description: "File content for preview",
+            content: {
+              "application/octet-stream": {
+                schema: {
+                  type: "string",
+                  format: "binary",
+                },
+              },
+            },
+          },
+          "400": {
+            description: "Validation failed",
+            content: {
+              "application/json": {
+                schema: {
+                  $ref: "#/components/schemas/ValidationErrorResponse",
+                },
+              },
+            },
+          },
+          "401": {
+            description: "Missing or invalid token",
+            content: {
+              "application/json": {
+                schema: { $ref: "#/components/schemas/ErrorResponse" },
+              },
+            },
+          },
+          "404": {
+            description: "File or file content not found",
             content: {
               "application/json": {
                 schema: { $ref: "#/components/schemas/ErrorResponse" },

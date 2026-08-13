@@ -16,4 +16,4 @@ export {
   passwordResetExpiresAt,
 } from "./password-reset";
 export { sendPasswordResetEmail } from "./mail";
-export { attachmentDisposition } from "./content-disposition";
+export { attachmentDisposition, inlineDisposition } from "./content-disposition";

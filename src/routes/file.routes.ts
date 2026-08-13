@@ -3,6 +3,7 @@ import {
   downloadFile,
   moveFile,
   permanentDeleteFile,
+  previewFile,
   renameFile,
   restoreFile,
   softDeleteFile,
@@ -62,6 +63,13 @@ fileRoutes.delete(
   authenticate,
   validate({ body: permanentDeleteFileBodySchema }),
   permanentDeleteFile,
+);
+
+fileRoutes.get(
+  "/:id/preview",
+  authenticate,
+  validate({ params: fileIdParamsSchema }),
+  previewFile,
 );
 
 fileRoutes.get(
