@@ -11,7 +11,9 @@ import {
   createFolderBodySchema,
   folderIdParamsSchema,
   moveFolderBodySchema,
+  permanentDeleteFolderBodySchema,
   renameFolderBodySchema,
+  trashFolderBodySchema,
 } from "@/validators";
 
 const folderRoutes = Router();
@@ -21,6 +23,20 @@ folderRoutes.post(
   authenticate,
   validate({ body: createFolderBodySchema }),
   createFolder,
+);
+
+folderRoutes.patch(
+  "/trash",
+  authenticate,
+  validate({ body: trashFolderBodySchema }),
+  softDeleteFolder,
+);
+
+folderRoutes.delete(
+  "/permanent",
+  authenticate,
+  validate({ body: permanentDeleteFolderBodySchema }),
+  permanentDeleteFolder,
 );
 
 folderRoutes.patch(
@@ -35,20 +51,6 @@ folderRoutes.patch(
   authenticate,
   validate({ params: folderIdParamsSchema, body: renameFolderBodySchema }),
   renameFolder,
-);
-
-folderRoutes.delete(
-  "/:id/permanent",
-  authenticate,
-  validate({ params: folderIdParamsSchema }),
-  permanentDeleteFolder,
-);
-
-folderRoutes.delete(
-  "/:id",
-  authenticate,
-  validate({ params: folderIdParamsSchema }),
-  softDeleteFolder,
 );
 
 export default folderRoutes;

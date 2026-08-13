@@ -1,8 +1,7 @@
-import fs from "node:fs/promises";
-import path from "node:path";
 import { Prisma } from "@generated/prisma/client";
 import { AppError } from "@/errors";
 import { fileRepository, folderRepository } from "@/repositories";
+import { objectStorage } from "@/storage";
 import type {
   CreateFolderBody,
   MoveFolderBody,
@@ -172,11 +171,7 @@ export async function permanentDeleteFolder(ownerId: string, folderId: string) {
   );
 
   await Promise.all(
-    files.map((file) =>
-      fs
-        .unlink(path.join(process.cwd(), file.storage_path))
-        .catch(() => undefined),
-    ),
+    files.map((file) => objectStorage.delete(file.storage_name)),
   );
 
   return {

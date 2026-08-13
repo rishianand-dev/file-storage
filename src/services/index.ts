@@ -17,7 +17,7 @@ export {
   softDeleteFolder,
   permanentDeleteFolder,
 } from "./folder.service";
-export { uploadFile } from "./file.service";
+export { uploadFile, getFileForDownload } from "./file.service";
 export {
   trackRecentlyOpened,
   listRecentlyOpened,

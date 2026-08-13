@@ -31,9 +31,22 @@ export async function create(data: {
   });
 }
 
+/**
+ * Active (not trashed) file owned by the user. Missing / other-owner / trashed → null.
+ */
 export async function findOwnedById(owner_id: string, id: string) {
   return prisma.file.findFirst({
     where: { id, owner_id, deleted_at: null },
+    select: fileSelect,
+  });
+}
+
+export async function findOwnedByIdIncludingDeleted(
+  owner_id: string,
+  id: string,
+) {
+  return prisma.file.findFirst({
+    where: { id, owner_id },
     select: fileSelect,
   });
 }
@@ -48,21 +61,45 @@ export async function findByFolderIds(owner_id: string, folder_ids: string[]) {
     },
     select: {
       id: true,
+      storage_name: true,
       storage_path: true,
     },
   });
 }
 
-
-export async function update(id: string, data: {
-  name: string;
-  extension: string;
-  storage_name: string;
-  storage_path: string;
-}) {
+export async function update(
+  id: string,
+  data: { name?: string; folder_id?: string | null },
+) {
   return prisma.file.update({
     where: { id },
     data,
     select: fileSelect,
+  });
+}
+
+export async function softDelete(id: string) {
+  return prisma.file.update({
+    where: { id },
+    data: { deleted_at: new Date() },
+    select: fileSelect,
+  });
+}
+
+export async function restore(
+  id: string,
+  data?: { folder_id?: string | null },
+) {
+  return prisma.file.update({
+    where: { id },
+    data: { deleted_at: null, ...data },
+    select: fileSelect,
+  });
+}
+
+export async function hardDelete(id: string) {
+  return prisma.file.delete({
+    where: { id },
+    select: { id: true, storage_path: true },
   });
 }

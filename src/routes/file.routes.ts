@@ -1,7 +1,23 @@
 import { Router } from "express";
-import { renameFile, uploadFile } from "@/controllers/file.controller";
+import {
+  downloadFile,
+  moveFile,
+  permanentDeleteFile,
+  renameFile,
+  restoreFile,
+  softDeleteFile,
+  uploadFile,
+} from "@/controllers/file.controller";
 import { authenticate, uploadSingleFile, validate } from "@/middleware";
-import { renameFileBodySchema, uploadFileBodySchema } from "@/validators";
+import {
+  fileIdParamsSchema,
+  moveFileBodySchema,
+  permanentDeleteFileBodySchema,
+  renameFileBodySchema,
+  restoreFileBodySchema,
+  trashFileBodySchema,
+  uploadFileBodySchema,
+} from "@/validators";
 
 const fileRoutes = Router();
 
@@ -18,6 +34,41 @@ fileRoutes.post(
   authenticate,
   validate({ body: renameFileBodySchema }),
   renameFile,
-)
+);
+
+fileRoutes.patch(
+  "/move",
+  authenticate,
+  validate({ body: moveFileBodySchema }),
+  moveFile,
+);
+
+fileRoutes.patch(
+  "/trash",
+  authenticate,
+  validate({ body: trashFileBodySchema }),
+  softDeleteFile,
+);
+
+fileRoutes.patch(
+  "/restore",
+  authenticate,
+  validate({ body: restoreFileBodySchema }),
+  restoreFile,
+);
+
+fileRoutes.delete(
+  "/permanent",
+  authenticate,
+  validate({ body: permanentDeleteFileBodySchema }),
+  permanentDeleteFile,
+);
+
+fileRoutes.get(
+  "/:id/download",
+  authenticate,
+  validate({ params: fileIdParamsSchema }),
+  downloadFile,
+);
 
 export default fileRoutes;

@@ -5,7 +5,9 @@ import type {
   CreateFolderBody,
   FolderIdParams,
   MoveFolderBody,
+  PermanentDeleteFolderBody,
   RenameFolderBody,
+  TrashFolderBody,
 } from "@/validators";
 
 function requireUser(req: Request): { id: string; email: string } {
@@ -51,7 +53,7 @@ export async function softDeleteFolder(
   res: Response,
 ): Promise<void> {
   const user = requireUser(req);
-  const { id } = req.params as FolderIdParams;
+  const { id } = req.body as TrashFolderBody;
   const result = await folderService.softDeleteFolder(user.id, id);
   res.status(200).json({ status: "success", data: result });
 }
@@ -61,7 +63,7 @@ export async function permanentDeleteFolder(
   res: Response,
 ): Promise<void> {
   const user = requireUser(req);
-  const { id } = req.params as FolderIdParams;
+  const { id } = req.body as PermanentDeleteFolderBody;
   const result = await folderService.permanentDeleteFolder(user.id, id);
   res.status(200).json({ status: "success", data: result });
 }

@@ -18,7 +18,7 @@ export const openApiSpec: OpenAPIV3.Document = {
     { name: "Auth", description: "Authentication endpoints" },
     { name: "Me", description: "Current authenticated user" },
     { name: "Folders", description: "Folder create, rename, move, and delete" },
-    { name: "Files", description: "File upload and storage" },
+    { name: "Files", description: "File upload, download, rename, move, trash, restore, and permanent delete" },
     {
       name: "Recently Opened",
       description: "Track and list recently opened files",
@@ -539,21 +539,22 @@ export const openApiSpec: OpenAPIV3.Document = {
           },
         },
       },
-      delete: {
+    },
+    "/folders/trash": {
+      patch: {
         tags: ["Folders"],
         summary: "Soft-delete folder",
         description:
           "Soft-deletes a folder and cascades to nested folders and files.",
         security: [{ bearerAuth: [] }],
-        parameters: [
-          {
-            name: "id",
-            in: "path",
-            required: true,
-            schema: { type: "string", format: "uuid" },
-            description: "Folder id",
+        requestBody: {
+          required: true,
+          content: {
+            "application/json": {
+              schema: { $ref: "#/components/schemas/TrashFolderBody" },
+            },
           },
-        ],
+        },
         responses: {
           "200": {
             description: "Folder soft-deleted",
@@ -670,22 +671,23 @@ export const openApiSpec: OpenAPIV3.Document = {
         },
       },
     },
-    "/folders/{id}/permanent": {
+    "/folders/permanent": {
       delete: {
         tags: ["Folders"],
         summary: "Permanently delete folder",
         description:
           "Permanently deletes a soft-deleted folder tree from the database and disk. Soft-delete first.",
         security: [{ bearerAuth: [] }],
-        parameters: [
-          {
-            name: "id",
-            in: "path",
-            required: true,
-            schema: { type: "string", format: "uuid" },
-            description: "Folder id",
+        requestBody: {
+          required: true,
+          content: {
+            "application/json": {
+              schema: {
+                $ref: "#/components/schemas/PermanentDeleteFolderBody",
+              },
+            },
           },
-        ],
+        },
         responses: {
           "200": {
             description: "Folder permanently deleted",
@@ -801,6 +803,306 @@ export const openApiSpec: OpenAPIV3.Document = {
           },
           "409": {
             description: "File name already exists in this location",
+            content: {
+              "application/json": {
+                schema: { $ref: "#/components/schemas/ErrorResponse" },
+              },
+            },
+          },
+        },
+      },
+    },
+    "/files/{id}/download": {
+      get: {
+        tags: ["Files"],
+        summary: "Download file",
+        description:
+          "Streams an owned, non-trashed file. Uses the original `name` in Content-Disposition; bytes are read from storage by `storage_name`.",
+        security: [{ bearerAuth: [] }],
+        parameters: [
+          {
+            name: "id",
+            in: "path",
+            required: true,
+            schema: { type: "string", format: "uuid" },
+            description: "File id",
+          },
+        ],
+        responses: {
+          "200": {
+            description: "File content",
+            content: {
+              "application/octet-stream": {
+                schema: {
+                  type: "string",
+                  format: "binary",
+                },
+              },
+            },
+          },
+          "400": {
+            description: "Validation failed",
+            content: {
+              "application/json": {
+                schema: {
+                  $ref: "#/components/schemas/ValidationErrorResponse",
+                },
+              },
+            },
+          },
+          "401": {
+            description: "Missing or invalid token",
+            content: {
+              "application/json": {
+                schema: { $ref: "#/components/schemas/ErrorResponse" },
+              },
+            },
+          },
+          "404": {
+            description: "File or file content not found",
+            content: {
+              "application/json": {
+                schema: { $ref: "#/components/schemas/ErrorResponse" },
+              },
+            },
+          },
+        },
+      },
+    },
+    "/files/move": {
+      patch: {
+        tags: ["Files"],
+        summary: "Move file",
+        description:
+          "Moves a file into a folder. Pass `null` for `folder_id` to move to root.",
+        security: [{ bearerAuth: [] }],
+        requestBody: {
+          required: true,
+          content: {
+            "application/json": {
+              schema: { $ref: "#/components/schemas/MoveFileBody" },
+            },
+          },
+        },
+        responses: {
+          "200": {
+            description: "File moved",
+            content: {
+              "application/json": {
+                schema: { $ref: "#/components/schemas/FileSuccessResponse" },
+              },
+            },
+          },
+          "400": {
+            description:
+              "Validation failed, or file is already in this location",
+            content: {
+              "application/json": {
+                schema: {
+                  oneOf: [
+                    { $ref: "#/components/schemas/ValidationErrorResponse" },
+                    { $ref: "#/components/schemas/ErrorResponse" },
+                  ],
+                },
+              },
+            },
+          },
+          "401": {
+            description: "Missing or invalid token",
+            content: {
+              "application/json": {
+                schema: { $ref: "#/components/schemas/ErrorResponse" },
+              },
+            },
+          },
+          "404": {
+            description: "File or destination folder not found",
+            content: {
+              "application/json": {
+                schema: { $ref: "#/components/schemas/ErrorResponse" },
+              },
+            },
+          },
+          "409": {
+            description: "File name already exists in destination",
+            content: {
+              "application/json": {
+                schema: { $ref: "#/components/schemas/ErrorResponse" },
+              },
+            },
+          },
+        },
+      },
+    },
+    "/files/permanent": {
+      delete: {
+        tags: ["Files"],
+        summary: "Permanently delete file",
+        description:
+          "Permanently deletes a soft-deleted file from the database and disk. Soft-delete first.",
+        security: [{ bearerAuth: [] }],
+        requestBody: {
+          required: true,
+          content: {
+            "application/json": {
+              schema: {
+                $ref: "#/components/schemas/PermanentDeleteFileBody",
+              },
+            },
+          },
+        },
+        responses: {
+          "200": {
+            description: "File permanently deleted",
+            content: {
+              "application/json": {
+                schema: {
+                  $ref: "#/components/schemas/PermanentDeleteFileSuccessResponse",
+                },
+              },
+            },
+          },
+          "400": {
+            description:
+              "Validation failed, or file has not been soft-deleted yet",
+            content: {
+              "application/json": {
+                schema: {
+                  oneOf: [
+                    { $ref: "#/components/schemas/ValidationErrorResponse" },
+                    { $ref: "#/components/schemas/ErrorResponse" },
+                  ],
+                },
+              },
+            },
+          },
+          "401": {
+            description: "Missing or invalid token",
+            content: {
+              "application/json": {
+                schema: { $ref: "#/components/schemas/ErrorResponse" },
+              },
+            },
+          },
+          "404": {
+            description: "File not found",
+            content: {
+              "application/json": {
+                schema: { $ref: "#/components/schemas/ErrorResponse" },
+              },
+            },
+          },
+        },
+      },
+    },
+    "/files/trash": {
+      patch: {
+        tags: ["Files"],
+        summary: "Soft-delete file",
+        description:
+          "Moves a file to trash by setting deleted_at. Disk file is kept until permanent delete.",
+        security: [{ bearerAuth: [] }],
+        requestBody: {
+          required: true,
+          content: {
+            "application/json": {
+              schema: { $ref: "#/components/schemas/TrashFileBody" },
+            },
+          },
+        },
+        responses: {
+          "200": {
+            description: "File soft-deleted",
+            content: {
+              "application/json": {
+                schema: { $ref: "#/components/schemas/FileSuccessResponse" },
+              },
+            },
+          },
+          "400": {
+            description: "Validation failed",
+            content: {
+              "application/json": {
+                schema: {
+                  $ref: "#/components/schemas/ValidationErrorResponse",
+                },
+              },
+            },
+          },
+          "401": {
+            description: "Missing or invalid token",
+            content: {
+              "application/json": {
+                schema: { $ref: "#/components/schemas/ErrorResponse" },
+              },
+            },
+          },
+          "404": {
+            description: "File not found",
+            content: {
+              "application/json": {
+                schema: { $ref: "#/components/schemas/ErrorResponse" },
+              },
+            },
+          },
+        },
+      },
+    },
+    "/files/restore": {
+      patch: {
+        tags: ["Files"],
+        summary: "Restore file",
+        description:
+          "Restores a soft-deleted file from trash. If its parent folder is missing or trashed, restores to root.",
+        security: [{ bearerAuth: [] }],
+        requestBody: {
+          required: true,
+          content: {
+            "application/json": {
+              schema: { $ref: "#/components/schemas/RestoreFileBody" },
+            },
+          },
+        },
+        responses: {
+          "200": {
+            description: "File restored",
+            content: {
+              "application/json": {
+                schema: { $ref: "#/components/schemas/FileSuccessResponse" },
+              },
+            },
+          },
+          "400": {
+            description: "Validation failed, or file is not in trash",
+            content: {
+              "application/json": {
+                schema: {
+                  oneOf: [
+                    { $ref: "#/components/schemas/ValidationErrorResponse" },
+                    { $ref: "#/components/schemas/ErrorResponse" },
+                  ],
+                },
+              },
+            },
+          },
+          "401": {
+            description: "Missing or invalid token",
+            content: {
+              "application/json": {
+                schema: { $ref: "#/components/schemas/ErrorResponse" },
+              },
+            },
+          },
+          "404": {
+            description: "File not found",
+            content: {
+              "application/json": {
+                schema: { $ref: "#/components/schemas/ErrorResponse" },
+              },
+            },
+          },
+          "409": {
+            description: "File name already exists in destination",
             content: {
               "application/json": {
                 schema: { $ref: "#/components/schemas/ErrorResponse" },
@@ -1299,6 +1601,28 @@ export const openApiSpec: OpenAPIV3.Document = {
           },
         },
       },
+      TrashFolderBody: {
+        type: "object",
+        required: ["id"],
+        properties: {
+          id: {
+            type: "string",
+            format: "uuid",
+            description: "Folder id to soft-delete",
+          },
+        },
+      },
+      PermanentDeleteFolderBody: {
+        type: "object",
+        required: ["id"],
+        properties: {
+          id: {
+            type: "string",
+            format: "uuid",
+            description: "Folder id to permanently delete",
+          },
+        },
+      },
       MoveFolderBody: {
         type: "object",
         required: ["parent_id"],
@@ -1403,6 +1727,68 @@ export const openApiSpec: OpenAPIV3.Document = {
         properties: {
           status: { type: "string", example: "success" },
           data: { $ref: "#/components/schemas/File" },
+        },
+      },
+      TrashFileBody: {
+        type: "object",
+        required: ["id"],
+        properties: {
+          id: {
+            type: "string",
+            format: "uuid",
+            description: "File id to soft-delete",
+          },
+        },
+      },
+      RestoreFileBody: {
+        type: "object",
+        required: ["id"],
+        properties: {
+          id: {
+            type: "string",
+            format: "uuid",
+            description: "File id to restore from trash",
+          },
+        },
+      },
+      MoveFileBody: {
+        type: "object",
+        required: ["id", "folder_id"],
+        properties: {
+          id: {
+            type: "string",
+            format: "uuid",
+            description: "File id to move",
+          },
+          folder_id: {
+            type: "string",
+            format: "uuid",
+            nullable: true,
+            description: "Destination folder id, or null for root",
+          },
+        },
+      },
+      PermanentDeleteFileBody: {
+        type: "object",
+        required: ["id"],
+        properties: {
+          id: {
+            type: "string",
+            format: "uuid",
+            description: "File id to permanently delete",
+          },
+        },
+      },
+      PermanentDeleteFileSuccessResponse: {
+        type: "object",
+        properties: {
+          status: { type: "string", example: "success" },
+          data: {
+            type: "object",
+            properties: {
+              id: { type: "string", format: "uuid" },
+            },
+          },
         },
       },
       TrackRecentlyOpenedBody: {
