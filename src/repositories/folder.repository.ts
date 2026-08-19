@@ -1,3 +1,4 @@
+import type { Prisma } from "@generated/prisma/client";
 import { prisma } from "@/prisma";
 
 export const folderSelect = {
@@ -10,6 +11,12 @@ export const folderSelect = {
   updated_at: true,
 } as const;
 
+type DbClient = Prisma.TransactionClient | typeof prisma;
+
+function db(tx?: Prisma.TransactionClient): DbClient {
+  return tx ?? prisma;
+}
+
 export async function findOwnedById(owner_id: string, id: string) {
   return prisma.folder.findFirst({
     where: { id, owner_id, deleted_at: null },
@@ -17,16 +24,31 @@ export async function findOwnedById(owner_id: string, id: string) {
   });
 }
 
-export async function create(data: {
-  name: string;
-  owner_id: string;
-  parent_id: string | null;
-}) {
-  return prisma.folder.create({
+export async function findOwnedByParentAndName(
+  owner_id: string,
+  parent_id: string | null,
+  name: string,
+  tx?: Prisma.TransactionClient,
+) {
+  return db(tx).folder.findFirst({
+    where: { owner_id, parent_id, name, deleted_at: null },
+    select: folderSelect,
+  });
+}
+
+export async function create(
+  data: {
+    name: string;
+    owner_id: string;
+    parent_id: string | null;
+  },
+  tx?: Prisma.TransactionClient,
+) {
+  return db(tx).folder.create({
     data: {
       name: data.name,
       owner_id: data.owner_id,
-      parent_id: data?.parent_id ?? null,
+      parent_id: data.parent_id ?? null,
     },
     select: folderSelect,
   });

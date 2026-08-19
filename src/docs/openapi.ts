@@ -24,6 +24,7 @@ export const openApiSpec: OpenAPIV3.Document = {
       description: "Track and list recently opened files",
     },
     { name: "Starred Folders", description: "Star and list favorite folders" },
+    { name: "Starred Files", description: "Star and list favorite files" },
   ],
   paths: {
     "/health": {
@@ -460,6 +461,64 @@ export const openApiSpec: OpenAPIV3.Document = {
           },
           "409": {
             description: "Folder name already exists in this location",
+            content: {
+              "application/json": {
+                schema: { $ref: "#/components/schemas/ErrorResponse" },
+              },
+            },
+          },
+        },
+      },
+    },
+    "/folders/tree": {
+      post: {
+        tags: ["Folders"],
+        summary: "Create folder tree",
+        description:
+          "Idempotently creates a folder hierarchy from relative paths (max 200 folders after expansion). Returns a path → folder_id map. Upload each file separately via POST /files with the matching folder_id. Use 4–8 parallel uploads; retry failed files individually. On 409 name conflict, skip or rename that file.",
+        security: [{ bearerAuth: [] }],
+        requestBody: {
+          required: true,
+          content: {
+            "application/json": {
+              schema: { $ref: "#/components/schemas/CreateFolderTreeBody" },
+            },
+          },
+        },
+        responses: {
+          "201": {
+            description: "Folder tree created or reused",
+            content: {
+              "application/json": {
+                schema: {
+                  $ref: "#/components/schemas/FolderTreeSuccessResponse",
+                },
+              },
+            },
+          },
+          "400": {
+            description: "Validation failed or invalid paths",
+            content: {
+              "application/json": {
+                schema: {
+                  oneOf: [
+                    { $ref: "#/components/schemas/ValidationErrorResponse" },
+                    { $ref: "#/components/schemas/ErrorResponse" },
+                  ],
+                },
+              },
+            },
+          },
+          "401": {
+            description: "Missing or invalid token",
+            content: {
+              "application/json": {
+                schema: { $ref: "#/components/schemas/ErrorResponse" },
+              },
+            },
+          },
+          "404": {
+            description: "Parent folder not found",
             content: {
               "application/json": {
                 schema: { $ref: "#/components/schemas/ErrorResponse" },
@@ -1438,6 +1497,167 @@ export const openApiSpec: OpenAPIV3.Document = {
         },
       },
     },
+    "/starred-files": {
+      get: {
+        tags: ["Starred Files"],
+        summary: "List starred files",
+        description:
+          "Returns starred files for the authenticated user, most recently starred first.",
+        security: [{ bearerAuth: [] }],
+        parameters: [
+          {
+            name: "limit",
+            in: "query",
+            required: false,
+            schema: {
+              type: "integer",
+              minimum: 1,
+              maximum: 100,
+              default: 20,
+            },
+            description: "Max number of items to return",
+          },
+        ],
+        responses: {
+          "200": {
+            description: "Starred files list",
+            content: {
+              "application/json": {
+                schema: {
+                  $ref: "#/components/schemas/StarredFileListSuccessResponse",
+                },
+              },
+            },
+          },
+          "400": {
+            description: "Validation failed",
+            content: {
+              "application/json": {
+                schema: {
+                  $ref: "#/components/schemas/ValidationErrorResponse",
+                },
+              },
+            },
+          },
+          "401": {
+            description: "Missing or invalid token",
+            content: {
+              "application/json": {
+                schema: { $ref: "#/components/schemas/ErrorResponse" },
+              },
+            },
+          },
+        },
+      },
+      post: {
+        tags: ["Starred Files"],
+        summary: "Star file",
+        description:
+          "Stars a file (or refreshes `starred_at` if already starred).",
+        security: [{ bearerAuth: [] }],
+        requestBody: {
+          required: true,
+          content: {
+            "application/json": {
+              schema: { $ref: "#/components/schemas/StarFileBody" },
+            },
+          },
+        },
+        responses: {
+          "201": {
+            description: "File starred",
+            content: {
+              "application/json": {
+                schema: {
+                  $ref: "#/components/schemas/StarredFileSuccessResponse",
+                },
+              },
+            },
+          },
+          "400": {
+            description: "Validation failed",
+            content: {
+              "application/json": {
+                schema: {
+                  $ref: "#/components/schemas/ValidationErrorResponse",
+                },
+              },
+            },
+          },
+          "401": {
+            description: "Missing or invalid token",
+            content: {
+              "application/json": {
+                schema: { $ref: "#/components/schemas/ErrorResponse" },
+              },
+            },
+          },
+          "404": {
+            description: "File not found",
+            content: {
+              "application/json": {
+                schema: { $ref: "#/components/schemas/ErrorResponse" },
+              },
+            },
+          },
+        },
+      },
+    },
+    "/starred-files/{fileId}": {
+      delete: {
+        tags: ["Starred Files"],
+        summary: "Unstar file",
+        description: "Removes a file from the authenticated user's stars.",
+        security: [{ bearerAuth: [] }],
+        parameters: [
+          {
+            name: "fileId",
+            in: "path",
+            required: true,
+            schema: { type: "string", format: "uuid" },
+            description: "File id to unstar",
+          },
+        ],
+        responses: {
+          "200": {
+            description: "File unstarred",
+            content: {
+              "application/json": {
+                schema: {
+                  $ref: "#/components/schemas/UnstarFileSuccessResponse",
+                },
+              },
+            },
+          },
+          "400": {
+            description: "Validation failed",
+            content: {
+              "application/json": {
+                schema: {
+                  $ref: "#/components/schemas/ValidationErrorResponse",
+                },
+              },
+            },
+          },
+          "401": {
+            description: "Missing or invalid token",
+            content: {
+              "application/json": {
+                schema: { $ref: "#/components/schemas/ErrorResponse" },
+              },
+            },
+          },
+          "404": {
+            description: "File not found or not starred",
+            content: {
+              "application/json": {
+                schema: { $ref: "#/components/schemas/ErrorResponse" },
+              },
+            },
+          },
+        },
+      },
+    },
   },
   components: {
     schemas: {
@@ -1643,6 +1863,53 @@ export const openApiSpec: OpenAPIV3.Document = {
             format: "uuid",
             nullable: true,
             description: "Parent folder id, or null/omit for root",
+          },
+        },
+      },
+      CreateFolderTreeBody: {
+        type: "object",
+        required: ["paths"],
+        properties: {
+          parent_id: {
+            type: "string",
+            format: "uuid",
+            nullable: true,
+            description: "Destination folder id, or null for root",
+          },
+          paths: {
+            type: "array",
+            minItems: 1,
+            maxItems: 200,
+            items: {
+              type: "string",
+              example: "Photos/2024",
+            },
+            description:
+              "Relative folder paths using `/` separators. Implicit parents are created. Max 200 folders after expansion, 20 segments per path.",
+          },
+        },
+      },
+      FolderTreeSuccessResponse: {
+        type: "object",
+        properties: {
+          status: { type: "string", example: "success" },
+          data: {
+            type: "object",
+            properties: {
+              folders: {
+                type: "object",
+                additionalProperties: {
+                  type: "string",
+                  format: "uuid",
+                },
+                example: {
+                  Photos: "550e8400-e29b-41d4-a716-446655440000",
+                  "Photos/2024":
+                    "6ba7b810-9dad-11d1-80b4-00c04fd430c8",
+                },
+                description: "Map of relative path to folder id",
+              },
+            },
           },
         },
       },
@@ -1932,6 +2199,56 @@ export const openApiSpec: OpenAPIV3.Document = {
             type: "object",
             properties: {
               folder_id: { type: "string", format: "uuid" },
+            },
+          },
+        },
+      },
+      StarFileBody: {
+        type: "object",
+        required: ["file_id"],
+        properties: {
+          file_id: {
+            type: "string",
+            format: "uuid",
+            description: "Id of the file to star",
+          },
+        },
+      },
+      StarredFile: {
+        type: "object",
+        properties: {
+          id: { type: "string", format: "uuid" },
+          user_id: { type: "string", format: "uuid" },
+          file_id: { type: "string", format: "uuid" },
+          starred_at: { type: "string", format: "date-time" },
+          file: { $ref: "#/components/schemas/File" },
+        },
+      },
+      StarredFileSuccessResponse: {
+        type: "object",
+        properties: {
+          status: { type: "string", example: "success" },
+          data: { $ref: "#/components/schemas/StarredFile" },
+        },
+      },
+      StarredFileListSuccessResponse: {
+        type: "object",
+        properties: {
+          status: { type: "string", example: "success" },
+          data: {
+            type: "array",
+            items: { $ref: "#/components/schemas/StarredFile" },
+          },
+        },
+      },
+      UnstarFileSuccessResponse: {
+        type: "object",
+        properties: {
+          status: { type: "string", example: "success" },
+          data: {
+            type: "object",
+            properties: {
+              file_id: { type: "string", format: "uuid" },
             },
           },
         },

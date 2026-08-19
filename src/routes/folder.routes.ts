@@ -1,6 +1,7 @@
 import { Router } from "express";
 import {
   createFolder,
+  createFolderTree,
   moveFolder,
   permanentDeleteFolder,
   renameFolder,
@@ -9,6 +10,7 @@ import {
 import { authenticate, validate } from "@/middleware";
 import {
   createFolderBodySchema,
+  createFolderTreeBodySchema,
   folderIdParamsSchema,
   moveFolderBodySchema,
   permanentDeleteFolderBodySchema,
@@ -23,6 +25,13 @@ folderRoutes.post(
   authenticate,
   validate({ body: createFolderBodySchema }),
   createFolder,
+);
+
+folderRoutes.post(
+  "/tree",
+  authenticate,
+  validate({ body: createFolderTreeBodySchema }),
+  createFolderTree,
 );
 
 folderRoutes.patch(

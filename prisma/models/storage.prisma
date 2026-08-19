@@ -49,6 +49,7 @@ model File {
   updated_at DateTime @updatedAt
 
   recently_opened RecentlyOpened[]
+  starred_files   StarredFile[]
 
   @@unique([owner_id, folder_id, name])
   @@index([owner_id])

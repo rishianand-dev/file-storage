@@ -3,6 +3,7 @@ import { AppError } from "@/errors";
 import * as folderService from "@/services/folder.service";
 import type {
   CreateFolderBody,
+  CreateFolderTreeBody,
   FolderIdParams,
   MoveFolderBody,
   PermanentDeleteFolderBody,
@@ -22,6 +23,18 @@ export async function createFolder(req: Request, res: Response): Promise<void> {
   const result = await folderService.createFolder(
     user.id,
     req.body as CreateFolderBody,
+  );
+  res.status(201).json({ status: "success", data: result });
+}
+
+export async function createFolderTree(
+  req: Request,
+  res: Response,
+): Promise<void> {
+  const user = requireUser(req);
+  const result = await folderService.ensureFolderTree(
+    user.id,
+    req.body as CreateFolderTreeBody,
   );
   res.status(201).json({ status: "success", data: result });
 }

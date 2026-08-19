@@ -12,6 +12,7 @@ export {
 export { getMe, updateMe } from "./user.service";
 export {
   createFolder,
+  ensureFolderTree,
   renameFolder,
   moveFolder,
   softDeleteFolder,
@@ -27,3 +28,8 @@ export {
   unstarFolder,
   listStarredFolders,
 } from "./starred-folder.service";
+export {
+  starFile,
+  unstarFile,
+  listStarredFiles,
+} from "./starred-file.service";

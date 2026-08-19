@@ -6,6 +6,7 @@ import healthRoutes from "@/routes/health.routes";
 import meRoutes from "@/routes/me.routes";
 import recentlyOpenedRoutes from "@/routes/recently-opened.routes";
 import starredFolderRoutes from "@/routes/starred-folder.routes";
+import starredFileRoutes from "@/routes/starred-file.routes";
 
 const router = Router();
 
@@ -16,5 +17,6 @@ router.use("/folders", folderRoutes);
 router.use("/files", fileRoutes);
 router.use("/recently-opened", recentlyOpenedRoutes);
 router.use("/starred-folders", starredFolderRoutes);
+router.use("/starred-files", starredFileRoutes);
 
 export default router;

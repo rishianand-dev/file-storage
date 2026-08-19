@@ -1,9 +1,11 @@
 import { Prisma } from "@generated/prisma/client";
 import { AppError } from "@/errors";
+import { prisma } from "@/prisma";
 import { fileRepository, folderRepository } from "@/repositories";
 import { objectStorage } from "@/storage";
 import type {
   CreateFolderBody,
+  CreateFolderTreeBody,
   MoveFolderBody,
   RenameFolderBody,
 } from "@/validators";
@@ -65,6 +67,82 @@ export async function createFolder(ownerId: string, input: CreateFolderBody) {
   } catch (error) {
     mapUniqueNameConflict(error);
   }
+}
+
+/**
+ * Idempotently creates a folder tree and returns a path → folder_id map.
+ * Upload files separately via POST /files with folder_id from this map.
+ */
+export async function ensureFolderTree(
+  ownerId: string,
+  input: CreateFolderTreeBody,
+) {
+  const parentId = input.parent_id;
+
+  if (parentId) {
+    const parent = await folderRepository.findOwnedById(ownerId, parentId);
+    if (!parent) {
+      throw new AppError("Parent folder not found", 404);
+    }
+  }
+
+  const folders: Record<string, string> = {};
+
+  await prisma.$transaction(async (tx) => {
+    const parentByPath = new Map<string, string | null>();
+    parentByPath.set("", parentId);
+
+    for (const path of input.expanded_paths) {
+      const segments = path.split("/");
+      const name = segments.at(-1)!;
+      const parentPath = segments.slice(0, -1).join("/");
+      const parentFolderId = parentByPath.get(parentPath);
+
+      if (parentFolderId === undefined) {
+        throw new AppError("Invalid folder tree", 400);
+      }
+
+      let folder = await folderRepository.findOwnedByParentAndName(
+        ownerId,
+        parentFolderId,
+        name,
+        tx,
+      );
+
+      if (!folder) {
+        try {
+          folder = await folderRepository.create(
+            {
+              name,
+              owner_id: ownerId,
+              parent_id: parentFolderId,
+            },
+            tx,
+          );
+        } catch (error) {
+          if (
+            error instanceof Prisma.PrismaClientKnownRequestError &&
+            error.code === "P2002"
+          ) {
+            folder = await folderRepository.findOwnedByParentAndName(
+              ownerId,
+              parentFolderId,
+              name,
+              tx,
+            );
+            if (!folder) throw error;
+          } else {
+            throw error;
+          }
+        }
+      }
+
+      folders[path] = folder.id;
+      parentByPath.set(path, folder.id);
+    }
+  });
+
+  return { folders };
 }
 
 export async function renameFolder(

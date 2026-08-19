@@ -1,0 +1,14 @@
+model StarredFile {
+  id String @id @default(uuid())
+
+  user_id String
+  file_id String
+
+  starred_at DateTime @default(now())
+
+  user User @relation(fields: [user_id], references: [id], onDelete: Cascade)
+  file File @relation(fields: [file_id], references: [id], onDelete: Cascade)
+
+  @@unique([user_id, file_id])
+  @@index([user_id, starred_at(sort: Desc)])
+}

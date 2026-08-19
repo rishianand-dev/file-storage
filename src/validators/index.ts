@@ -14,12 +14,14 @@ export { updateMeBodySchema, type UpdateMeBody } from "./me.validator";
 export {
   folderIdParamsSchema,
   createFolderBodySchema,
+  createFolderTreeBodySchema,
   renameFolderBodySchema,
   trashFolderBodySchema,
   permanentDeleteFolderBodySchema,
   moveFolderBodySchema,
   type FolderIdParams,
   type CreateFolderBody,
+  type CreateFolderTreeBody,
   type RenameFolderBody,
   type TrashFolderBody,
   type PermanentDeleteFolderBody,
@@ -55,3 +57,11 @@ export {
   type StarredFolderParams,
   type ListStarredFoldersQuery,
 } from "./starred-folder.validator";
+export {
+  starFileBodySchema,
+  starredFileParamsSchema,
+  listStarredFilesQuerySchema,
+  type StarFileBody,
+  type StarredFileParams,
+  type ListStarredFilesQuery,
+} from "./starred-file.validator";

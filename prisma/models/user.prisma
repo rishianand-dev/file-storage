@@ -11,6 +11,7 @@ model User {
   files                File[]
   recently_opened      RecentlyOpened[]
   starred_folders      StarredFolder[]
+  starred_files        StarredFile[]
   created_at           DateTime            @default(now())
   updated_at           DateTime            @updatedAt
 }
